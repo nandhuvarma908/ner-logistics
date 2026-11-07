@@ -1,6 +1,7 @@
 backend/
 ai_ml/
 requirements.txt
+package.json
 Dockerfile
 docker-compose.yml
 database/
