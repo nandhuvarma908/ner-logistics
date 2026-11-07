@@ -1,0 +1,7 @@
+backend/
+ai_ml/
+requirements.txt
+Dockerfile
+docker-compose.yml
+database/
+*.py
