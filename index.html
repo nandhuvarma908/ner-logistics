@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>NER Smart Logistics & Accessibility Intelligence Platform | SIH Prototype</title>
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0F172A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Chart.js for SHAP Explainability -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            tactical: {
+              950: '#060A12',
+              900: '#0B1120',
+              850: '#0E1729',
+              800: '#142036',
+              700: '#1E2E4A',
+              600: '#2A3F63',
+            },
+            accent: {
+              cyan: '#06B6D4',
+              emerald: '#10B981',
+              amber: '#F59E0B',
+              rose: '#F43F5E',
+              violet: '#8B5CF6'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background-color: #060A12;
+      color: #E2E8F0;
+      overflow-x: hidden;
+    }
+    
+    /* Map styling */
+    #map {
+      height: 100%;
+      width: 100%;
+      background: #060A12;
+      z-index: 10;
+    }
+
+    /* Pulsing hazard animation */
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.35); opacity: 0.2; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .pulse-danger {
+      animation: pulse-ring 2.5s infinite ease-in-out;
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0B1120;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1E2E4A;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #2A3F63;
+    }
+
+    .leaflet-popup-content-wrapper {
+      background: #0E1729 !important;
+      color: #E2E8F0 !important;
+      border: 1px solid #1E2E4A !important;
+      border-radius: 10px !important;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.7) !important;
+    }
+    .leaflet-popup-tip {
+      background: #0E1729 !important;
+    }
+    .leaflet-container {
+      font-family: 'Plus Jakarta Sans', sans-serif !important;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen flex flex-col select-none overflow-hidden bg-tactical-950 text-slate-200">
+
+  <!-- TOP APP BAR -->
+  <header class="h-14 border-b border-tactical-800 bg-tactical-900/95 backdrop-blur px-4 flex items-center justify-between z-40 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="h-9 w-9 rounded-lg bg-gradient-to-tr from-cyan-600 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-950/50">
+        <i data-lucide="shield-alert" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-bold text-sm tracking-wide text-white uppercase" id="app-title">NER-Logistics Intelligence</span>
+          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800/60 font-semibold">SIH-2024 MVP</span>
+          <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/60 flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span id="label-live-monitoring">LIVE MONSOON MONITORING</span>
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400 hidden sm:block">AI-Based Accessibility & Resilient Multi-Corridor Routing for 8 North Eastern States</p>
+      </div>
+    </div>
+
+    <!-- Center Status Ribbon -->
+    <div class="hidden lg:flex items-center gap-6 font-mono text-xs">
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500">CORRIDOR ACCESSIBILITY:</span>
+        <span class="font-bold text-accent-emerald flex items-center gap-1" id="stat-accessibility">
+          <i data-lucide="trending-up" class="w-3.5 h-3.5"></i> 76.4%
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500">ACTIVE BOTTLENECK:</span>
+        <span class="font-bold text-accent-rose flex items-center gap-1" id="stat-bottlenecks">
+          <i data-lucide="alert-octagon" class="w-3.5 h-3.5 animate-pulse"></i> NH-6 Sonapur Ghat
+        </span>
+      </div>
+      <div class="flex items-center gap-2">
+        <span class="text-slate-500">MONITORED FLEET:</span>
+        <span class="font-bold text-cyan-400 flex items-center gap-1" id="stat-fleet-count">
+          <i data-lucide="truck" class="w-3.5 h-3.5"></i> 5 Active Units
+        </span>
+      </div>
+    </div>
+
+    <!-- Top Right Actions -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <!-- Multilingual Dropdown -->
+      <div class="relative">
+        <select id="lang-select" onchange="changeLanguage(this.value)" class="bg-tactical-800 border border-tactical-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-cyan-500 cursor-pointer">
+          <option value="en">English (EN)</option>
+          <option value="hi">हिन्दी (Hindi)</option>
+          <option value="as">অসমীয়া (Assamese)</option>
+          <option value="bn">বাংলা (Bengali)</option>
+        </select>
+      </div>
+
+      <!-- User Role Selector -->
+      <div class="relative hidden md:block">
+        <select id="role-select" onchange="switchRole(this.value)" class="bg-tactical-800 border border-tactical-700 text-xs rounded-lg px-2.5 py-1.5 text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer">
+          <option value="authority">Role: SDMA / Authority</option>
+          <option value="dispatcher">Role: Fleet Dispatcher</option>
+          <option value="field_officer">Role: Field Officer (PWA)</option>
+          <option value="driver">Role: Truck Driver (Turn-by-Turn)</option>
+        </select>
+      </div>
+
+      <!-- Offline Edge Simulator Toggle -->
+      <button id="btn-offline-toggle" onclick="toggleOfflineSimulator()" title="Toggle simulated offline mode for field testing" class="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-all bg-emerald-950/70 border-emerald-700/60 text-emerald-300 hover:bg-emerald-900/60">
+        <i data-lucide="wifi" id="icon-wifi" class="w-3.5 h-3.5"></i>
+        <span id="text-offline-status" class="hidden sm:inline">ONLINE</span>
+      </button>
+
+      <!-- Audio Alert Toggle -->
+      <button id="btn-audio-toggle" onclick="toggleAudioAlerts()" title="Toggle Siren & Alert Audio Chimes" class="p-1.5 rounded-lg bg-tactical-800 border border-tactical-700 text-slate-300 hover:text-white hover:bg-tactical-700">
+        <i data-lucide="volume-2" id="icon-audio" class="w-4 h-4 text-cyan-400"></i>
+      </button>
+
+      <!-- Google Maps Hub Button -->
+      <button onclick="openModal('modal-google-maps')" title="Google Maps Satellite, Terrain & Traffic Hub" class="flex items-center gap-1.5 px-2.5 py-1.5 bg-blue-950/80 hover:bg-blue-900 border border-blue-700/80 text-blue-300 hover:text-white rounded-lg text-xs font-semibold shadow-md transition-all">
+        <i data-lucide="map-pin" class="w-3.5 h-3.5 text-blue-400"></i>
+        <span class="hidden sm:inline">Google Maps</span>
+      </button>
+
+      <!-- PPT Presentation Deck Button -->
+      <a href="presentation/presentation.html" target="_blank" title="Open 10-Slide Review Presentation Deck" class="flex items-center gap-1 px-2.5 py-1.5 bg-tactical-800 hover:bg-tactical-700 text-amber-400 hover:text-amber-300 border border-tactical-700 rounded-lg text-xs font-semibold shadow-md transition-all">
+        <i data-lucide="presentation" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">PPT Deck</span>
+      </a>
+
+      <!-- SIH Pitch / Docs Modal Button -->
+      <button onclick="openModal('modal-sih-info')" class="flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white rounded-lg text-xs font-semibold shadow-md shadow-cyan-950/60">
+        <i data-lucide="award" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">SIH Spec</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT -->
+  <div class="flex-1 flex overflow-hidden relative">
+
+    <!-- LEFT FLOATING CONTROLLER / SIDEBAR -->
+    <aside id="sidebar" class="w-96 max-w-[92vw] bg-tactical-900/95 backdrop-blur border-r border-tactical-800 flex flex-col z-30 transition-transform duration-300 shrink-0">
+      
+      <!-- Nav Tabs -->
+      <div class="grid grid-cols-4 border-b border-tactical-800 text-xs font-medium text-slate-400 p-1 bg-tactical-950/80">
+        <button onclick="switchTab('tab-ai-route')" id="btn-tab-ai-route" class="tab-btn py-2 rounded flex flex-col items-center gap-1 text-cyan-400 bg-tactical-800/80 font-semibold">
+          <i data-lucide="route" class="w-4 h-4"></i>
+          <span class="text-[10px]" id="tab-label-route">AI Route</span>
+        </button>
+        <button onclick="switchTab('tab-fleet')" id="btn-tab-fleet" class="tab-btn py-2 rounded flex flex-col items-center gap-1 hover:text-slate-200">
+          <div class="relative">
+            <i data-lucide="truck" class="w-4 h-4"></i>
+            <span class="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+          </div>
+          <span class="text-[10px]" id="tab-label-fleet">Live Fleet</span>
+        </button>
+        <button onclick="switchTab('tab-field')" id="btn-tab-field" class="tab-btn py-2 rounded flex flex-col items-center gap-1 hover:text-slate-200">
+          <div class="relative">
+            <i data-lucide="map-pin" class="w-4 h-4"></i>
+            <span id="badge-offline-queue" class="hidden absolute -top-1 -right-2 px-1 text-[8px] bg-amber-500 text-black font-bold rounded-full">0</span>
+          </div>
+          <span class="text-[10px]" id="tab-label-field">Report</span>
+        </button>
+        <button onclick="switchTab('tab-simulation')" id="btn-tab-simulation" class="tab-btn py-2 rounded flex flex-col items-center gap-1 hover:text-slate-200">
+          <i data-lucide="sliders" class="w-4 h-4 text-accent-amber"></i>
+          <span class="text-[10px]" id="tab-label-sim">God Mode</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: AI ROUTE RISK & EXPLAINABILITY (SHAP) -->
+      <div id="tab-ai-route" class="tab-pane flex-1 overflow-y-auto p-4 space-y-4">
+        
+        <!-- Header -->
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold tracking-wider text-slate-300 uppercase flex items-center gap-1.5" id="header-route-eval">
+            <i data-lucide="brain-circuit" class="w-4 h-4 text-cyan-400"></i> Route Risk Prediction
+          </h2>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-tactical-800 text-slate-400 border border-tactical-700">XGBoost + SHAP</span>
+        </div>
+
+        <!-- Route Selector Card -->
+        <div class="bg-tactical-850 border border-tactical-700 rounded-xl p-3 space-y-3">
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block" id="label-origin">Origin Hub</label>
+              <select id="route-origin" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                <option value="Guwahati" selected>Guwahati (Dispur)</option>
+                <option value="Shillong">Shillong</option>
+                <option value="Silchar">Silchar (Barak Valley)</option>
+                <option value="Siliguri">Siliguri (Hub)</option>
+                <option value="Dimapur">Dimapur</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block" id="label-destination">Destination</label>
+              <select id="route-destination" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                <option value="Silchar" selected>Silchar (Barak Valley)</option>
+                <option value="Agartala">Agartala (Tripura)</option>
+                <option value="Aizawl">Aizawl (Mizoram)</option>
+                <option value="Imphal">Imphal (Manipur)</option>
+                <option value="Gangtok">Gangtok (Sikkim)</option>
+                <option value="Itanagar">Itanagar (Arunachal)</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Weather Intensity Modifier -->
+          <div>
+            <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 mb-1">
+              <span id="label-weather-modifier">IMD Weather Severity Simulation</span>
+              <span id="weather-intensity-val" class="text-cyan-400 font-bold">Monsoon Downpour (185mm)</span>
+            </div>
+            <input type="range" id="weather-slider" min="1" max="4" value="3" oninput="updateWeatherSimulation(this.value)" class="w-full h-1.5 bg-tactical-700 rounded-lg appearance-none cursor-pointer accent-cyan-400">
+            <div class="flex justify-between text-[9px] font-mono text-slate-500 mt-1">
+              <span>Clear</span>
+              <span>Light Rain</span>
+              <span>Monsoon</span>
+              <span>Cloudburst</span>
+            </div>
+          </div>
+
+          <button onclick="calculateRouteRisk()" class="w-full py-2 bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-lg flex items-center justify-center gap-1.5 shadow-md shadow-cyan-950/60 transition-all">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span id="btn-analyze-route">Predict Risk & Compute Safe Alternate</span>
+          </button>
+        </div>
+
+        <!-- Evaluation Results Card -->
+        <div id="route-evaluation-result" class="space-y-3">
+          
+          <!-- Primary Route Card -->
+          <div class="bg-tactical-850 border border-tactical-700 rounded-xl p-3 relative overflow-hidden">
+            <div class="absolute top-0 right-0 w-2 h-full bg-accent-rose" id="primary-risk-bar"></div>
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <span class="text-[10px] font-mono uppercase text-slate-400 tracking-wider">Primary Corridor</span>
+                <h3 class="text-sm font-bold text-white" id="primary-route-name">NH-6: Guwahati - Shillong - Sonapur - Silchar</h3>
+              </div>
+              <span id="primary-risk-badge" class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-rose-950 text-rose-400 border border-rose-800">
+                HIGH RISK 78.4%
+              </span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-center text-xs py-2 bg-tactical-900 rounded-lg border border-tactical-800 my-2">
+              <div>
+                <div class="text-[10px] text-slate-500 font-mono">Distance</div>
+                <div class="font-bold text-slate-200" id="primary-dist">313.5 km</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 font-mono">Standard ETA</div>
+                <div class="font-bold text-slate-200">7.5 hrs</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 font-mono">Delay Impact</div>
+                <div class="font-bold text-rose-400" id="primary-delay">+5.3 hrs</div>
+              </div>
+            </div>
+
+            <p class="text-xs text-rose-300/90 bg-rose-950/40 border border-rose-900/60 rounded p-2 mb-2" id="primary-hazard-reason">
+              ⚠️ Critical landslide hazard at Sonapur Tunnel: Slope angle 36.5° with 185mm continuous precipitation breached safety threshold.
+            </p>
+
+            <!-- Google Maps Primary Corridor Route Link -->
+            <a id="gmaps-primary-link" href="https://www.google.com/maps/dir/?api=1&origin=Guwahati,Assam&destination=Silchar,Assam&travelmode=driving" target="_blank" class="w-full py-1.5 px-2 bg-tactical-900 hover:bg-tactical-800 border border-tactical-700 text-slate-300 hover:text-white rounded text-[11px] font-semibold flex items-center justify-center gap-1.5 transition-all mb-2">
+              <i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-400"></i>
+              <span>View Primary Corridor in Google Maps</span>
+            </a>
+
+            <!-- SHAP Explainability Breakdown -->
+            <div class="mt-3">
+              <div class="flex justify-between items-center mb-1 text-[11px] font-semibold text-slate-300">
+                <span class="flex items-center gap-1">
+                  <i data-lucide="bar-chart-2" class="w-3.5 h-3.5 text-cyan-400"></i>
+                  Explainable AI (SHAP Contributions)
+                </span>
+                <span class="text-[10px] text-slate-500 font-mono">GSI + IMD Model</span>
+              </div>
+              
+              <!-- SHAP Feature Progress Bars -->
+              <div class="space-y-1.5 text-[10px] font-mono mt-2" id="shap-bars-container">
+                <div>
+                  <div class="flex justify-between text-slate-400">
+                    <span>48h Rainfall & Saturation</span>
+                    <span class="text-cyan-400 font-bold">+36.4%</span>
+                  </div>
+                  <div class="w-full bg-tactical-950 h-1.5 rounded-full overflow-hidden mt-0.5">
+                    <div class="bg-cyan-500 h-full rounded-full" style="width: 36.4%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-400">
+                    <span>Steep Ghat Slope (>30°)</span>
+                    <span class="text-amber-400 font-bold">+26.2%</span>
+                  </div>
+                  <div class="w-full bg-tactical-950 h-1.5 rounded-full overflow-hidden mt-0.5">
+                    <div class="bg-amber-500 h-full rounded-full" style="width: 26.2%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-400">
+                    <span>Historical Landslide Recurrence</span>
+                    <span class="text-rose-400 font-bold">+21.0%</span>
+                  </div>
+                  <div class="w-full bg-tactical-950 h-1.5 rounded-full overflow-hidden mt-0.5">
+                    <div class="bg-rose-500 h-full rounded-full" style="width: 21.0%"></div>
+                  </div>
+                </div>
+                <div>
+                  <div class="flex justify-between text-slate-400">
+                    <span>River Proximity & Soil Erosion</span>
+                    <span class="text-indigo-400 font-bold">+10.5%</span>
+                  </div>
+                  <div class="w-full bg-tactical-950 h-1.5 rounded-full overflow-hidden mt-0.5">
+                    <div class="bg-indigo-500 h-full rounded-full" style="width: 10.5%"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Recommended Safe Alternate Route Card -->
+          <div class="bg-tactical-850 border border-emerald-800/80 rounded-xl p-3 relative overflow-hidden bg-gradient-to-b from-tactical-850 to-emerald-950/20">
+            <div class="absolute top-0 right-0 w-2 h-full bg-accent-emerald"></div>
+            <div class="flex justify-between items-start mb-2">
+              <div>
+                <span class="text-[10px] font-mono uppercase text-emerald-400 tracking-wider flex items-center gap-1 font-bold">
+                  <i data-lucide="check-circle" class="w-3 h-3"></i> Recommended Safe Alternate
+                </span>
+                <h3 class="text-sm font-bold text-white">NH-27: Doboka - Lumding - Haflong Bypass</h3>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[11px] font-mono font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">
+                SAFE 38.2%
+              </span>
+            </div>
+
+            <div class="grid grid-cols-3 gap-2 text-center text-xs py-2 bg-tactical-900 rounded-lg border border-tactical-800 my-2">
+              <div>
+                <div class="text-[10px] text-slate-500 font-mono">Distance</div>
+                <div class="font-bold text-slate-200">362.0 km (+48.5)</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 font-mono">Reliable ETA</div>
+                <div class="font-bold text-emerald-400">9.4 hrs</div>
+              </div>
+              <div>
+                <div class="text-[10px] text-slate-500 font-mono">Risk Drop</div>
+                <div class="font-bold text-emerald-400">-51.3%</div>
+              </div>
+            </div>
+
+            <button onclick="rerouteLiveFleetToAlternate()" class="w-full py-2 mt-1 bg-accent-emerald hover:bg-emerald-600 text-tactical-950 font-bold text-xs rounded-lg flex items-center justify-center gap-1.5 shadow-lg shadow-emerald-950/50 transition-all">
+              <i data-lucide="corner-up-right" class="w-4 h-4"></i>
+              <span id="btn-reroute-fleet">Divert Active Fleet to Alternate Route</span>
+            </button>
+
+            <!-- Google Maps Turn-by-Turn Navigation Action -->
+            <a id="gmaps-nav-link" href="https://www.google.com/maps/dir/?api=1&origin=Guwahati,Assam&destination=Silchar,Assam&waypoints=Lumding,Assam%7CHaflong,Assam&travelmode=driving" target="_blank" class="w-full py-1.5 mt-2 bg-tactical-800 hover:bg-tactical-700 border border-tactical-600 text-blue-300 hover:text-white font-semibold text-xs rounded-lg flex items-center justify-center gap-1.5 transition-all">
+              <i data-lucide="navigation" class="w-3.5 h-3.5 text-blue-400"></i>
+              <span>Open Alternate Route in Google Maps</span>
+            </a>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- TAB 2: LIVE FLEET TELEMETRY & TRACKING -->
+      <div id="tab-fleet" class="tab-pane hidden flex-1 overflow-y-auto p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold tracking-wider text-slate-300 uppercase flex items-center gap-1.5" id="header-fleet-mgmt">
+            <i data-lucide="truck" class="w-4 h-4 text-cyan-400"></i> Active Logistics Fleet
+          </h2>
+          <span class="text-[10px] font-mono text-cyan-400 bg-cyan-950 px-2 py-0.5 rounded border border-cyan-800" id="fleet-active-badge">5 Real-Time Convoys</span>
+        </div>
+        <p class="text-[11px] text-slate-400">GPS tracking simulated with AIS-140 standard protocol telemetry across NER highways.</p>
+
+        <!-- Fleet Vehicles List Container -->
+        <div id="fleet-list-container" class="space-y-2.5">
+          <!-- Dynamically populated via JS -->
+        </div>
+      </div>
+
+      <!-- TAB 3: FIELD INCIDENT REPORTING (OFFLINE PWA READY) -->
+      <div id="tab-field" class="tab-pane hidden flex-1 overflow-y-auto p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold tracking-wider text-slate-300 uppercase flex items-center gap-1.5" id="header-field-report">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i> Field Incident Reporter
+          </h2>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-950 text-amber-400 border border-amber-800">Edge PWA Sync</span>
+        </div>
+        <p class="text-[11px] text-slate-400">Report landslides, washouts, and submerged roads. Queues offline in IndexedDB during zero-connectivity.</p>
+
+        <!-- Offline Queue Status Banner -->
+        <div id="offline-sync-banner" class="hidden p-2 rounded-lg bg-amber-950/70 border border-amber-700/80 text-amber-300 text-xs flex items-center justify-between">
+          <div class="flex items-center gap-1.5">
+            <i data-lucide="database" class="w-4 h-4 animate-bounce"></i>
+            <span><strong id="offline-pending-count">0</strong> reports queued in local cache</span>
+          </div>
+          <button onclick="syncOfflineQueueManual()" class="px-2 py-0.5 bg-amber-500 text-black font-bold text-[10px] rounded hover:bg-amber-400">Sync Now</button>
+        </div>
+
+        <form id="incident-form" onsubmit="handleIncidentSubmit(event)" class="bg-tactical-850 border border-tactical-700 rounded-xl p-3 space-y-3">
+          
+          <div>
+            <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block" id="label-incident-highway">Highway Corridor</label>
+            <select id="inc-highway" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+              <option value="NH-6">NH-6: Meghalaya - Silchar Lifeline (Sonapur/Jowai)</option>
+              <option value="NH-27">NH-27: Haflong - Lumding East-West Corridor</option>
+              <option value="NH-37">NH-37: Brahmaputra Valley (Kaziranga/Jorhat)</option>
+              <option value="NH-2">NH-2: Dimapur - Kohima - Imphal Lifeline</option>
+              <option value="NH-10">NH-10: Sevoke - Teesta - Gangtok (Sikkim)</option>
+              <option value="NH-306">NH-306: Silchar - Vairengte - Aizawl (Mizoram)</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block" id="label-incident-type">Hazard Category</label>
+              <select id="inc-type" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+                <option value="LANDSLIDE">Major Landslide</option>
+                <option value="FLASH_FLOOD">Flash Flood / Inundation</option>
+                <option value="BRIDGE_DAMAGE">Bridge Structural Damage</option>
+                <option value="MUDFLOW">Mudflow / Debris Blockage</option>
+                <option value="ROCKFALL">Rockfall / Sinking Zone</option>
+              </select>
+            </div>
+            <div>
+              <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block" id="label-incident-severity">Severity Level</label>
+              <select id="inc-severity" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-rose-500">
+                <option value="CRITICAL">Critical (Road Blocked)</option>
+                <option value="HIGH">High (Single-Lane Only)</option>
+                <option value="MODERATE">Moderate (Slow Moving)</option>
+                <option value="LOW">Low (Passable with Caution)</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block" id="label-incident-loc">Landmark / Milestone Location</label>
+            <input type="text" id="inc-landmark" value="Near Sonapur Tunnel Portal, km 141.2" required class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <div>
+              <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block">Latitude (GPS)</label>
+              <input type="number" step="0.0001" id="inc-lat" value="25.1050" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs font-mono text-cyan-300">
+            </div>
+            <div>
+              <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block">Longitude (GPS)</label>
+              <input type="number" step="0.0001" id="inc-lng" value="92.5120" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs font-mono text-cyan-300">
+            </div>
+          </div>
+
+          <div>
+            <label class="text-[10px] uppercase font-mono text-slate-400 mb-1 block" id="label-incident-desc">Ground Observation Description</label>
+            <textarea id="inc-desc" rows="2" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-cyan-500">Massive boulder slide and mud slurry blocking both lanes. Excavator required from Jowai PWD division.</textarea>
+          </div>
+
+          <!-- Camera photo simulator -->
+          <div class="border border-dashed border-tactical-700 rounded-lg p-2 bg-tactical-900/60 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <div class="w-8 h-8 rounded bg-tactical-800 flex items-center justify-center text-cyan-400">
+                <i data-lucide="camera" class="w-4 h-4"></i>
+              </div>
+              <div class="text-[11px]">
+                <div class="text-slate-300 font-semibold" id="label-photo-attached">Photo Geo-Stamped</div>
+                <div class="text-slate-500 text-[10px] font-mono">IMG_2024_NER_SLIDE.JPG (1.8MB)</div>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono text-emerald-400">GPS Watermarked</span>
+          </div>
+
+          <button type="submit" class="w-full py-2 bg-accent-amber hover:bg-amber-600 text-tactical-950 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 shadow-md shadow-amber-950/60 transition-all">
+            <i data-lucide="send" class="w-3.5 h-3.5"></i>
+            <span id="btn-submit-report">Broadcast Field Report to Central Hub</span>
+          </button>
+        </form>
+
+        <!-- Recent Incident Feed -->
+        <div class="space-y-2">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider" id="header-verified-incidents">Verified Active Ground Incidents</div>
+          <div id="verified-incidents-list" class="space-y-1.5">
+            <!-- Populated via JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: SIH SIMULATION CONTROLLER ("GOD MODE") -->
+      <div id="tab-simulation" class="tab-pane hidden flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-xs font-bold tracking-wider text-amber-400 uppercase flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-4 h-4"></i> Hackathon Demo Controller
+          </h2>
+          <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-950 text-purple-400 border border-purple-800 font-bold">JURY MODE</span>
+        </div>
+        <p class="text-[11px] text-slate-400">Simulate catastrophic disasters in real-time to demonstrate system reactivity, A* rerouting, and alerts to the jury.</p>
+
+        <!-- God Mode Action Buttons -->
+        <div class="space-y-2.5">
+          <button onclick="triggerSimScenario('sonapur_landslide')" class="w-full text-left p-3 rounded-xl bg-tactical-850 hover:bg-tactical-800 border border-rose-800/80 transition-all group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-rose-400 flex items-center gap-1.5">
+                <i data-lucide="mountain" class="w-4 h-4"></i> 1. Trigger Major Landslide (NH-6 Sonapur)
+              </span>
+              <span class="text-[9px] font-mono bg-rose-950 text-rose-400 px-1.5 py-0.5 rounded border border-rose-800">BLOCKS SOUTHERN NER</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Simulates 12,000 cu.m debris collapse, turns NH-6 crimson, sends emergency siren, and diverts fuel/oxygen tankers to NH-27 Haflong.</p>
+          </button>
+
+          <button onclick="triggerSimScenario('kaziranga_flood')" class="w-full text-left p-3 rounded-xl bg-tactical-850 hover:bg-tactical-800 border border-cyan-800/80 transition-all group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-cyan-400 flex items-center gap-1.5">
+                <i data-lucide="waves" class="w-4 h-4"></i> 2. Trigger Brahmaputra Flash Flood (NH-37)
+              </span>
+              <span class="text-[9px] font-mono bg-cyan-950 text-cyan-400 px-1.5 py-0.5 rounded border border-cyan-800">WATERLOGGING</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Simulates river swelling over Kaliabor - Bokakhat stretch. Impose 20km/h animal corridor restrictions and delay alerts.</p>
+          </button>
+
+          <button onclick="triggerSimScenario('extreme_monsoon')" class="w-full text-left p-3 rounded-xl bg-tactical-850 hover:bg-tactical-800 border border-indigo-800/80 transition-all group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-indigo-400 flex items-center gap-1.5">
+                <i data-lucide="cloud-rain" class="w-4 h-4"></i> 3. Cloudburst Spike (Meghalaya Plateau)
+              </span>
+              <span class="text-[9px] font-mono bg-indigo-950 text-indigo-400 px-1.5 py-0.5 rounded border border-indigo-800">+220mm PRECIPITATION</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Spikes rainfall index across Cherrapunji / Mawsynram, automatically elevating regional vulnerability by 34%.</p>
+          </button>
+
+          <button onclick="triggerSimScenario('clear_all')" class="w-full text-left p-3 rounded-xl bg-tactical-850 hover:bg-tactical-800 border border-emerald-800/80 transition-all group">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                <i data-lucide="rotate-ccw" class="w-4 h-4"></i> 4. Clear Blockages & Restore Flow
+              </span>
+              <span class="text-[9px] font-mono bg-emerald-950 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800">ALL GREEN</span>
+            </div>
+            <p class="text-[11px] text-slate-400 group-hover:text-slate-300">Simulates BRO clearing operations, resets road risk to baseline green corridors, resumes standard logistics schedules.</p>
+          </button>
+        </div>
+
+        <!-- Simulation Speed Multiplier -->
+        <div class="bg-tactical-850 border border-tactical-700 rounded-xl p-3">
+          <div class="flex justify-between items-center text-xs mb-2">
+            <span class="font-bold text-slate-300">Simulation Speed Multiplier</span>
+            <span id="speed-label" class="font-mono text-cyan-400 font-bold">1x (Real-time)</span>
+          </div>
+          <div class="grid grid-cols-3 gap-2 font-mono text-xs">
+            <button onclick="setSimSpeed(1)" class="py-1.5 rounded bg-tactical-800 hover:bg-cyan-900 border border-tactical-700 text-slate-300">1x</button>
+            <button onclick="setSimSpeed(3)" class="py-1.5 rounded bg-tactical-800 hover:bg-cyan-900 border border-tactical-700 text-slate-300">3x Fast</button>
+            <button onclick="setSimSpeed(8)" class="py-1.5 rounded bg-tactical-800 hover:bg-cyan-900 border border-tactical-700 text-slate-300">8x Warp</button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- SIDEBAR FOOTER -->
+      <div class="p-3 border-t border-tactical-800 bg-tactical-950 text-[10px] text-slate-500 flex justify-between items-center">
+        <span>PostGIS + XGBoost + Leaflet</span>
+        <span class="font-mono text-cyan-400 font-semibold" id="sys-clock">00:00:00 IST</span>
+      </div>
+    </aside>
+
+    <!-- CENTER & RIGHT: MAP & LIVE OVERLAYS -->
+    <main class="flex-1 relative h-full w-full">
+      
+      <!-- Leaflet Map Container -->
+      <div id="map"></div>
+
+      <!-- FLOATING LAYER TOGGLES (TOP RIGHT ON MAP) -->
+      <div class="absolute top-4 right-4 z-20 flex flex-col gap-2">
+        
+        <!-- Toggle Panel Container -->
+        <div class="bg-tactical-900/95 backdrop-blur border border-tactical-700 rounded-xl p-2.5 shadow-2xl space-y-1.5 text-xs">
+          <div class="text-[10px] font-mono uppercase text-slate-400 px-1 font-bold" id="label-layer-filters">Map Intelligence Layers</div>
+          
+          <label class="flex items-center gap-2 px-2 py-1 rounded hover:bg-tactical-800 cursor-pointer">
+            <input type="checkbox" id="layer-highways" checked onchange="toggleMapLayer('highways', this.checked)" class="rounded bg-tactical-700 border-tactical-600 text-cyan-500">
+            <span class="text-slate-300">National Corridors (NH)</span>
+          </label>
+
+          <label class="flex items-center gap-2 px-2 py-1 rounded hover:bg-tactical-800 cursor-pointer">
+            <input type="checkbox" id="layer-landslides" checked onchange="toggleMapLayer('landslides', this.checked)" class="rounded bg-tactical-700 border-tactical-600 text-rose-500">
+            <span class="text-slate-300">Landslide Hazard Zones (GSI)</span>
+          </label>
+
+          <label class="flex items-center gap-2 px-2 py-1 rounded hover:bg-tactical-800 cursor-pointer">
+            <input type="checkbox" id="layer-floods" checked onchange="toggleMapLayer('floods', this.checked)" class="rounded bg-tactical-700 border-tactical-600 text-cyan-400">
+            <span class="text-slate-300">Flood Inundation (Brahmaputra/Barak)</span>
+          </label>
+
+          <label class="flex items-center gap-2 px-2 py-1 rounded hover:bg-tactical-800 cursor-pointer">
+            <input type="checkbox" id="layer-fleet" checked onchange="toggleMapLayer('fleet', this.checked)" class="rounded bg-tactical-700 border-tactical-600 text-emerald-400">
+            <span class="text-slate-300">Live Logistics Vehicles (5)</span>
+          </label>
+
+          <label class="flex items-center gap-2 px-2 py-1 rounded hover:bg-tactical-800 cursor-pointer">
+            <input type="checkbox" id="layer-incidents" checked onchange="toggleMapLayer('incidents', this.checked)" class="rounded bg-tactical-700 border-tactical-600 text-amber-400">
+            <span class="text-slate-300">Field Hazard Reports</span>
+          </label>
+
+          <!-- Google Maps Basemap Provider Selector -->
+          <div class="pt-2 mt-1 border-t border-tactical-800 space-y-1">
+            <div class="text-[10px] font-mono uppercase text-slate-400 px-1 font-bold flex items-center justify-between">
+              <span class="flex items-center gap-1 text-blue-400">
+                <i data-lucide="layers" class="w-3 h-3"></i> Basemap Engine
+              </span>
+              <span class="text-[9px] font-mono text-emerald-400 font-semibold">Google Maps</span>
+            </div>
+            <select id="basemap-selector" onchange="switchBaseMap(this.value)" class="w-full bg-tactical-800 border border-tactical-700 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none focus:border-blue-500 cursor-pointer">
+              <option value="googleHybrid" selected>🛰️ Google Satellite Hybrid</option>
+              <option value="googleTerrain">🏔️ Google Mountain Terrain</option>
+              <option value="googleRoads">🗺️ Google Standard Roadmap</option>
+              <option value="googleTraffic">🚦 Google Live Traffic</option>
+              <option value="cartoDark">🌑 Tactical Dark (CartoDB)</option>
+              <option value="osm">🌐 OpenStreetMap</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Center Camera Quick Buttons -->
+        <div class="bg-tactical-900/95 backdrop-blur border border-tactical-700 rounded-xl p-1.5 shadow-2xl flex flex-col gap-1 text-[11px] font-mono">
+          <button onclick="flyToRegion('ner')" class="px-2 py-1 rounded bg-tactical-800 hover:bg-tactical-700 text-slate-300 text-left">🌐 Whole NER</button>
+          <button onclick="flyToRegion('sonapur')" class="px-2 py-1 rounded bg-tactical-800 hover:bg-rose-950/80 text-rose-300 text-left">📍 Sonapur (NH-6)</button>
+          <button onclick="flyToRegion('haflong')" class="px-2 py-1 rounded bg-tactical-800 hover:bg-emerald-950/80 text-emerald-300 text-left">📍 Haflong (NH-27)</button>
+          <button onclick="flyToRegion('sikkim')" class="px-2 py-1 rounded bg-tactical-800 hover:bg-tactical-700 text-slate-300 text-left">📍 Teesta (NH-10)</button>
+        </div>
+      </div>
+
+      <!-- BOTTOM REAL-TIME ALERT TICKER & NOTIFICATION DRAWER -->
+      <div class="absolute bottom-4 left-4 right-4 z-20 pointer-events-none">
+        <div class="max-w-4xl mx-auto bg-tactical-900/95 backdrop-blur border border-tactical-700 rounded-xl shadow-2xl p-3 pointer-events-auto flex items-center justify-between gap-4">
+          
+          <div class="flex items-center gap-3 overflow-hidden">
+            <div class="h-8 w-8 rounded-lg bg-rose-950 border border-rose-800 flex items-center justify-center shrink-0">
+              <i data-lucide="bell-ring" class="w-4 h-4 text-rose-400 animate-bounce"></i>
+            </div>
+            <div class="overflow-hidden">
+              <div class="flex items-center gap-2">
+                <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-rose-950 text-rose-400 border border-rose-800 uppercase font-bold" id="alert-banner-type">CRITICAL ADVISORY</span>
+                <span class="text-[10px] text-slate-400 font-mono" id="alert-banner-time">Just now</span>
+              </div>
+              <p class="text-xs text-slate-200 truncate font-medium" id="alert-banner-text">
+                🚨 Sonapur Tunnel (NH-6): Landslide reported. Road completely blocked. 2 convoys instructed to hold or reroute via NH-27.
+              </p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openModal('modal-all-alerts')" class="px-2.5 py-1.5 rounded-lg bg-tactical-800 hover:bg-tactical-700 text-slate-300 text-xs font-semibold flex items-center gap-1 border border-tactical-700">
+              <i data-lucide="list" class="w-3.5 h-3.5"></i>
+              <span id="btn-label-all-alerts">All Alerts (4)</span>
+            </button>
+            <button onclick="openModal('modal-analytics')" class="px-2.5 py-1.5 rounded-lg bg-cyan-950 hover:bg-cyan-900 text-cyan-300 text-xs font-semibold flex items-center gap-1 border border-cyan-800">
+              <i data-lucide="pie-chart" class="w-3.5 h-3.5"></i>
+              <span id="btn-label-accessibility-matrix">State Heatmap</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL 1: SIH SPECIFICATION & ARCHITECTURE -->
+  <div id="modal-sih-info" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-tactical-900 border border-tactical-700 rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-tactical-800 flex justify-between items-center bg-tactical-950">
+        <div class="flex items-center gap-2">
+          <i data-lucide="award" class="w-5 h-5 text-amber-400"></i>
+          <h3 class="font-bold text-white text-sm">Smart India Hackathon (SIH) Problem & Solution Architecture</h3>
+        </div>
+        <button onclick="closeModal('modal-sih-info')" class="p-1 rounded-lg hover:bg-tactical-800 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-4 text-xs text-slate-300 leading-relaxed">
+        <div>
+          <h4 class="font-bold text-white text-sm mb-1 text-cyan-400">1. Problem Statement & Context</h4>
+          <p>
+            The North Eastern Region (NER) consists of 8 states connected only by the 22km-wide Siliguri Corridor. Topographical vulnerability (Himalayan young fold mountains, torrential monsoon rainfall, Brahmaputra basin floods) regularly severs lifelines like NH-6 (Sonapur Tunnel) and NH-27 (Dima Hasao ghats). A single landslide causes acute shortages of emergency medicines, fuel, and food grains across Tripura, Mizoram, and southern Assam within 48-72 hours.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 my-2">
+          <div class="p-3 bg-tactical-850 rounded-xl border border-tactical-700">
+            <h5 class="font-bold text-amber-400 mb-1">SIH MVP Focus (Built & Working Here)</h5>
+            <ul class="list-disc list-inside space-y-1 text-[11px] text-slate-300">
+              <li>Interactive Leaflet GIS map with 8-state NER corridor overlays</li>
+              <li>AI route risk scoring (GSI landslide + IMD rainfall features)</li>
+              <li>Dynamic risk-adjusted A* safe alternate rerouting</li>
+              <li>Real-time GPS vehicle tracking simulation with AIS-140 style telemetry</li>
+              <li>PWA offline field incident reporting with IndexedDB queue & auto-sync</li>
+              <li>Automated alert engine with sound alerts & multilingual i18n</li>
+            </ul>
+          </div>
+
+          <div class="p-3 bg-tactical-850 rounded-xl border border-tactical-700">
+            <h5 class="font-bold text-indigo-400 mb-1">Full Enterprise Product Roadmap</h5>
+            <ul class="list-disc list-inside space-y-1 text-[11px] text-slate-300">
+              <li>Drone reconnaissance imagery & computer vision debris estimation</li>
+              <li>PostGIS spatial cluster partitioning across all 120 NER districts</li>
+              <li>Multi-modal routing: Inland Waterway NW-2 + Rail + Cargo Drones</li>
+              <li>Direct integration with MoRTH Bhoomi Rashi & CDAC National SMS Gateway</li>
+              <li>LoRaWAN & BLE peer-to-peer convoy mesh in deep mountain shadow zones</li>
+            </ul>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="font-bold text-white text-sm mb-1 text-cyan-400">2. Explainable AI (XAI) Formula</h4>
+          <p class="font-mono bg-tactical-950 p-2.5 rounded-lg border border-tactical-800 text-[11px] text-emerald-300">
+            Risk_Score = (Rain_48h * 0.28) + (Rain_1h * 0.18) + (Slope_deg * 0.20) + (Hist_Slides * 0.15) + (Soil_Sat * 0.10) + (River_Dist * 0.05) + (Incidents * 0.04)
+          </p>
+          <p class="mt-1 text-[11px] text-slate-400">
+            SHAP (SHapley Additive exPlanations) values decompose the risk score into clear percentages so that state disaster authorities immediately comprehend why an evacuation or road closure is warranted.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: ACCESSIBILITY HEATMAP & DISTRICT METRICS -->
+  <div id="modal-analytics" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-tactical-900 border border-tactical-700 rounded-2xl max-w-4xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-tactical-800 flex justify-between items-center bg-tactical-950">
+        <div class="flex items-center gap-2">
+          <i data-lucide="activity" class="w-5 h-5 text-cyan-400"></i>
+          <h3 class="font-bold text-white text-sm">State & District Accessibility Intelligence Matrix</h3>
+        </div>
+        <button onclick="closeModal('modal-analytics')" class="p-1 rounded-lg hover:bg-tactical-800 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-4 text-xs text-slate-300">
+        <p class="text-[11px] text-slate-400">District-wise vulnerability index evaluated against 48h IMD rainfall, terrain slopes, and active lifeline passability.</p>
+        
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="state-cards-grid">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="bg-tactical-850 p-4 rounded-xl border border-tactical-700 mt-4">
+          <h4 class="font-bold text-white text-xs uppercase font-mono tracking-wider mb-2 text-amber-400">Critical Regional Bottlenecks Ranking</h4>
+          <div class="space-y-2 text-[11px] font-mono">
+            <div class="flex justify-between items-center p-2 rounded bg-tactical-900 border border-tactical-800">
+              <span class="text-rose-400 font-bold">1. Sonapur Tunnel (NH-6 Meghalaya)</span>
+              <span class="text-slate-400">Risk: 78.4% | Cutoff: Agartala & Silchar</span>
+              <span class="text-rose-400 font-bold">CRITICAL</span>
+            </div>
+            <div class="flex justify-between items-center p-2 rounded bg-tactical-900 border border-tactical-800">
+              <span class="text-amber-400 font-bold">2. Teesta Bazaar - 29th Mile (NH-10 Sikkim)</span>
+              <span class="text-slate-400">Risk: 84.0% | Cutoff: Gangtok</span>
+              <span class="text-amber-400 font-bold">SEVERE</span>
+            </div>
+            <div class="flex justify-between items-center p-2 rounded bg-tactical-900 border border-tactical-800">
+              <span class="text-amber-400 font-bold">3. Zubza Sinking Zone (NH-2 Nagaland)</span>
+              <span class="text-slate-400">Risk: 71.5% | Cutoff: Kohima & Imphal</span>
+              <span class="text-amber-400 font-bold">HIGH RISK</span>
+            </div>
+            <div class="flex justify-between items-center p-2 rounded bg-tactical-900 border border-tactical-800">
+              <span class="text-emerald-400 font-bold">4. Doboka - Lumding - Haflong (NH-27)</span>
+              <span class="text-slate-400">Risk: 38.2% | Viable Bypass Corridor</span>
+              <span class="text-emerald-400 font-bold">OPEN / SAFE</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: ALL ACTIVE ALERTS -->
+  <div id="modal-all-alerts" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-tactical-900 border border-tactical-700 rounded-2xl max-w-2xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-tactical-800 flex justify-between items-center bg-tactical-950">
+        <div class="flex items-center gap-2">
+          <i data-lucide="bell" class="w-5 h-5 text-rose-400"></i>
+          <h3 class="font-bold text-white text-sm">Emergency Alert Broadcast Feed</h3>
+        </div>
+        <button onclick="closeModal('modal-all-alerts')" class="p-1 rounded-lg hover:bg-tactical-800 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-4 overflow-y-auto space-y-2.5" id="all-alerts-container">
+        <!-- Populated via JS -->
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 4: GOOGLE MAPS INTELLIGENCE & NAVIGATION HUB -->
+  <div id="modal-google-maps" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-tactical-900 border border-tactical-700 rounded-2xl max-w-3xl w-full max-h-[88vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-tactical-800 flex justify-between items-center bg-tactical-950">
+        <div class="flex items-center gap-2">
+          <div class="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-white text-sm">Google Maps Satellite, Terrain & Navigation Hub</h3>
+            <p class="text-[10px] text-slate-400">Integrated Google Maps tile engine & turn-by-turn routing for NER corridors</p>
+          </div>
+        </div>
+        <button onclick="closeModal('modal-google-maps')" class="p-1 rounded-lg hover:bg-tactical-800 text-slate-400 hover:text-white">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-5 overflow-y-auto space-y-4 text-xs text-slate-300">
+        
+        <!-- Quick Basemap Switcher Row -->
+        <div>
+          <label class="text-[10px] uppercase font-mono text-slate-400 mb-1.5 block font-bold">Switch Main GIS Map to Google Maps Layer</label>
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button onclick="switchBaseMap('googleHybrid'); closeModal('modal-google-maps');" class="p-2.5 rounded-xl bg-tactical-850 hover:bg-blue-950/60 border border-blue-800/80 text-left transition-all group">
+              <div class="font-bold text-white group-hover:text-blue-300 text-xs">🛰️ Satellite Hybrid</div>
+              <div class="text-[10px] text-slate-400">High-res aerial imagery + road overlays</div>
+            </button>
+            <button onclick="switchBaseMap('googleTerrain'); closeModal('modal-google-maps');" class="p-2.5 rounded-xl bg-tactical-850 hover:bg-emerald-950/60 border border-emerald-800/80 text-left transition-all group">
+              <div class="font-bold text-white group-hover:text-emerald-300 text-xs">🏔️ Mountain Terrain</div>
+              <div class="text-[10px] text-slate-400">Contour relief for landslide evaluation</div>
+            </button>
+            <button onclick="switchBaseMap('googleRoads'); closeModal('modal-google-maps');" class="p-2.5 rounded-xl bg-tactical-850 hover:bg-slate-800 border border-tactical-700 text-left transition-all group">
+              <div class="font-bold text-white text-xs">🗺️ Google Roadmap</div>
+              <div class="text-[10px] text-slate-400">Standard clean highway cartography</div>
+            </button>
+            <button onclick="switchBaseMap('googleTraffic'); closeModal('modal-google-maps');" class="p-2.5 rounded-xl bg-tactical-850 hover:bg-rose-950/60 border border-rose-800/80 text-left transition-all group">
+              <div class="font-bold text-white group-hover:text-rose-300 text-xs">🚦 Live Traffic Layer</div>
+              <div class="text-[10px] text-slate-400">Real-time highway congestion data</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Embedded Google Maps Interactive Window -->
+        <div class="space-y-1.5">
+          <div class="flex justify-between items-center text-[11px]">
+            <span class="font-bold text-white flex items-center gap-1.5">
+              <i data-lucide="globe" class="w-3.5 h-3.5 text-blue-400"></i>
+              Google Maps Live Satellite View (Sonapur Tunnel Chokepoint)
+            </span>
+            <a href="https://www.google.com/maps/@25.105,92.512,14z/data=!3m1!1e3" target="_blank" class="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1">
+              <span>Open Fullscreen</span> <i data-lucide="external-link" class="w-3 h-3"></i>
+            </a>
+          </div>
+          <iframe 
+            src="https://maps.google.com/maps?q=Sonapur%20Tunnel%20Meghalaya&t=k&z=11&ie=UTF8&iwloc=&output=embed" 
+            class="w-full h-52 rounded-xl border border-tactical-700 shadow-inner bg-tactical-950" 
+            frameborder="0" 
+            scrolling="no"
+            loading="lazy">
+          </iframe>
+        </div>
+
+        <!-- Google Maps Turn-by-Turn Navigation for 8 NER Corridors -->
+        <div class="space-y-2">
+          <div class="text-[11px] font-bold text-white uppercase tracking-wider font-mono text-cyan-400">
+            Open Turn-by-Turn GPS Navigation in Google Maps
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+            
+            <a href="https://www.google.com/maps/dir/?api=1&origin=Guwahati,Assam&destination=Silchar,Assam&travelmode=driving" target="_blank" class="p-2.5 rounded-lg bg-tactical-850 hover:bg-tactical-800 border border-tactical-700 flex items-center justify-between group">
+              <div>
+                <div class="font-bold text-white group-hover:text-cyan-300">Guwahati ➔ Silchar (NH-6)</div>
+                <div class="text-[10px] text-slate-400">Primary Lifeline via GS Road & Sonapur</div>
+              </div>
+              <i data-lucide="navigation" class="w-4 h-4 text-rose-400 shrink-0"></i>
+            </a>
+
+            <a href="https://www.google.com/maps/dir/?api=1&origin=Guwahati,Assam&destination=Silchar,Assam&waypoints=Lumding,Assam%7CHaflong,Assam&travelmode=driving" target="_blank" class="p-2.5 rounded-lg bg-tactical-850 hover:bg-tactical-800 border border-emerald-800/80 flex items-center justify-between group">
+              <div>
+                <div class="font-bold text-white group-hover:text-emerald-300">Guwahati ➔ Silchar (NH-27)</div>
+                <div class="text-[10px] text-emerald-400">Recommended Safe Bypass via Haflong</div>
+              </div>
+              <i data-lucide="navigation" class="w-4 h-4 text-emerald-400 shrink-0"></i>
+            </a>
+
+            <a href="https://www.google.com/maps/dir/?api=1&origin=Silchar,Assam&destination=Agartala,Tripura&travelmode=driving" target="_blank" class="p-2.5 rounded-lg bg-tactical-850 hover:bg-tactical-800 border border-tactical-700 flex items-center justify-between group">
+              <div>
+                <div class="font-bold text-white group-hover:text-cyan-300">Silchar ➔ Agartala (NH-8)</div>
+                <div class="text-[10px] text-slate-400">Tripura Essential Logistics Lifeline</div>
+              </div>
+              <i data-lucide="navigation" class="w-4 h-4 text-cyan-400 shrink-0"></i>
+            </a>
+
+            <a href="https://www.google.com/maps/dir/?api=1&origin=Dimapur,Nagaland&destination=Imphal,Manipur&travelmode=driving" target="_blank" class="p-2.5 rounded-lg bg-tactical-850 hover:bg-tactical-800 border border-tactical-700 flex items-center justify-between group">
+              <div>
+                <div class="font-bold text-white group-hover:text-cyan-300">Dimapur ➔ Imphal (NH-2)</div>
+                <div class="text-[10px] text-slate-400">Manipur Lifeline via Kohima & Senapati</div>
+              </div>
+              <i data-lucide="navigation" class="w-4 h-4 text-amber-400 shrink-0"></i>
+            </a>
+
+            <a href="https://www.google.com/maps/dir/?api=1&origin=Siliguri,West+Bengal&destination=Gangtok,Sikkim&travelmode=driving" target="_blank" class="p-2.5 rounded-lg bg-tactical-850 hover:bg-tactical-800 border border-tactical-700 flex items-center justify-between group">
+              <div>
+                <div class="font-bold text-white group-hover:text-cyan-300">Siliguri ➔ Gangtok (NH-10)</div>
+                <div class="text-[10px] text-slate-400">Sikkim Lifeline via Sevoke & Teesta</div>
+              </div>
+              <i data-lucide="navigation" class="w-4 h-4 text-rose-400 shrink-0"></i>
+            </a>
+
+            <a href="https://www.google.com/maps/dir/?api=1&origin=Silchar,Assam&destination=Aizawl,Mizoram&travelmode=driving" target="_blank" class="p-2.5 rounded-lg bg-tactical-850 hover:bg-tactical-800 border border-tactical-700 flex items-center justify-between group">
+              <div>
+                <div class="font-bold text-white group-hover:text-cyan-300">Silchar ➔ Aizawl (NH-306)</div>
+                <div class="text-[10px] text-slate-400">Mizoram Lifeline via Kolasib</div>
+              </div>
+              <i data-lucide="navigation" class="w-4 h-4 text-cyan-400 shrink-0"></i>
+            </a>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- LEAFLET JS & APP SCRIPT -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    // =========================================================================
+    // MULTILINGUAL DICTIONARY (English, Hindi, Assamese, Bengali)
+    // =========================================================================
+    const I18N = {
+      en: {
+        appTitle: "NER-Logistics Intelligence",
+        liveMonitoring: "LIVE MONSOON MONITORING",
+        routeEval: "Route Risk Prediction",
+        origin: "Origin Hub",
+        destination: "Destination",
+        weatherModifier: "IMD Weather Severity Simulation",
+        btnAnalyze: "Predict Risk & Compute Safe Alternate",
+        btnReroute: "Divert Active Fleet to Alternate Route",
+        fleetMgmt: "Active Logistics Fleet",
+        fieldReport: "Field Incident Reporter",
+        submitReport: "Broadcast Field Report to Central Hub",
+        layerFilters: "Map Intelligence Layers",
+        allAlerts: "All Alerts",
+        accessibilityMatrix: "State Heatmap"
+      },
+      hi: {
+        appTitle: "पूर्वोत्तर रसद एवं सुगम्यता मंच",
+        liveMonitoring: "सक्रिय मानसून निगरानी",
+        routeEval: "मार्ग जोखिम पूर्वानुमान",
+        origin: "प्रस्थान केंद्र",
+        destination: "गंतव्य स्थान",
+        weatherModifier: "मौसम तीव्रता सिमुलेशन",
+        btnAnalyze: "जोखिम विश्लेषण एवं सुरक्षित मार्ग",
+        btnReroute: "वाहनों को वैकल्पिक सुरक्षित मार्ग पर मोड़ें",
+        fleetMgmt: "सक्रिय रसद वाहन",
+        fieldReport: "धरातलीय आपदा रिपोर्टिंग",
+        submitReport: "केंद्रीय नियंत्रण कक्ष को रिपोर्ट भेजें",
+        layerFilters: "मानचित्र परतें",
+        allAlerts: "सभी चेतावनियाँ",
+        accessibilityMatrix: "राज्य सुगम्यता सूचकांक"
+      },
+      as: {
+        appTitle: "উত্তৰ-পূব লজিষ্টিকছ বুদ্ধিমত্তা মঞ্চ",
+        liveMonitoring: "সক্ৰিয় বাৰিষা নিৰীক্ষণ",
+        routeEval: "পথৰ বিপদাশংকা ভৱিষ্যদ্বাণী",
+        origin: "আৰম্ভণি কেন্দ্ৰ",
+        destination: "গন্তব্য স্থান",
+        weatherModifier: "বতৰৰ তীব্ৰতা পৰিমাপক",
+        btnAnalyze: "বিপদাশংকা গণনা আৰু বিকল্প পথ",
+        btnReroute: "নিৰাপদ বিকল্প পথেৰে যান-বাহন পুনৰ নিৰ্দেশনা",
+        fleetMgmt: "সক্ৰিয় যোগান কনভয়",
+        fieldReport: "ক্ষেত্ৰ দুৰ্যোগ প্ৰতিবেদন",
+        submitReport: "কেন্দ্ৰীয় কন্ট্ৰল ৰুমলৈ প্ৰেৰণ কৰক",
+        layerFilters: "মানচিত্ৰৰ স্তৰসমূহ",
+        allAlerts: "সকলো সঁকীয়নি",
+        accessibilityMatrix: "ৰাজ্যিক সুলভতা তালিকা"
+      },
+      bn: {
+        appTitle: "উত্তর-পূর্ব লজিস্টিক ও অ্যাক্সেসিবিলিটি প্ল্যাটফর্ম",
+        liveMonitoring: "সক্রিয় বর্ষা নজরদারি",
+        routeEval: "পথের ঝুঁকি পূর্বাভাস",
+        origin: "যাত্রা শুরুর কেন্দ্র",
+        destination: "গন্তব্য স্থল",
+        weatherModifier: "আবহাওয়ার তীব্রতা সিমুলেশন",
+        btnAnalyze: "ঝুঁকি বিশ্লেষণ ও বিকল্প নিরাপদ রুট",
+        btnReroute: "কনভয়কে নিরাপদ বিকল্প পথে চালনা করুন",
+        fleetMgmt: "সক্রিয় যানবাহন বহর",
+        fieldReport: "মাঠপর্যায়ের দুর্যোগ রিপোর্ট",
+        submitReport: "কেন্দ্রীয় নিয়ন্ত্রণ কক্ষে রিপোর্ট পাঠান",
+        layerFilters: "মানচিত্র স্তরসমূহ",
+        allAlerts: "সকল সতর্কতা",
+        accessibilityMatrix: "রাজ্যভিত্তিক এক্সেস সূচক"
+      }
+    };
+
+    let currentLang = 'en';
+
+    function changeLanguage(lang) {
+      currentLang = lang;
+      const t = I18N[lang] || I18N.en;
+      document.getElementById('app-title').textContent = t.appTitle;
+      document.getElementById('label-live-monitoring').textContent = t.liveMonitoring;
+      document.getElementById('header-route-eval').innerHTML = `<i data-lucide="brain-circuit" class="w-4 h-4 text-cyan-400"></i> ${t.routeEval}`;
+      document.getElementById('label-origin').textContent = t.origin;
+      document.getElementById('label-destination').textContent = t.destination;
+      document.getElementById('label-weather-modifier').textContent = t.weatherModifier;
+      document.getElementById('btn-analyze-route').textContent = t.btnAnalyze;
+      document.getElementById('btn-reroute-fleet').textContent = t.btnReroute;
+      document.getElementById('header-fleet-mgmt').innerHTML = `<i data-lucide="truck" class="w-4 h-4 text-cyan-400"></i> ${t.fleetMgmt}`;
+      document.getElementById('header-field-report').innerHTML = `<i data-lucide="alert-triangle" class="w-4 h-4 text-amber-400"></i> ${t.fieldReport}`;
+      document.getElementById('btn-submit-report').textContent = t.submitReport;
+      document.getElementById('label-layer-filters').textContent = t.layerFilters;
+      document.getElementById('btn-label-all-alerts').textContent = `${t.allAlerts} (${ALERTS.length})`;
+      document.getElementById('btn-label-accessibility-matrix').textContent = t.accessibilityMatrix;
+      lucide.createIcons();
+    }
+
+    // =========================================================================
+    // AUDIO SYNTHESIZER (Web Audio API - Zero External Dependencies)
+    // =========================================================================
+    let audioEnabled = true;
+    let audioCtx = null;
+
+    function playAlertPing(type = 'critical') {
+      if (!audioEnabled) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        if (type === 'critical') {
+          osc.type = 'sawtooth';
+          osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.35);
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.35);
+        } else {
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(587.33, audioCtx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.2);
+          gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+          osc.start();
+          osc.stop(audioCtx.currentTime + 0.2);
+        }
+      } catch (e) {
+        console.warn('Audio synth error:', e);
+      }
+    }
+
+    function toggleAudioAlerts() {
+      audioEnabled = !audioEnabled;
+      const icon = document.getElementById('icon-audio');
+      if (audioEnabled) {
+        icon.className = 'w-4 h-4 text-cyan-400';
+        playAlertPing('info');
+      } else {
+        icon.className = 'w-4 h-4 text-slate-500';
+      }
+    }
+
+    // =========================================================================
+    // SYSTEM CLOCK
+    // =========================================================================
+    setInterval(() => {
+      const now = new Date();
+      const clockEl = document.getElementById('sys-clock');
+      if (clockEl) {
+        clockEl.textContent = now.toTimeString().split(' ')[0] + ' IST';
+      }
+    }, 1000);
+
+    // =========================================================================
+    // OFFLINE EDGE SIMULATOR & INDEXEDDB STORAGE
+    // =========================================================================
+    let isSimulatedOffline = false;
+    let offlineReportsQueue = [];
+
+    function toggleOfflineSimulator() {
+      isSimulatedOffline = !isSimulatedOffline;
+      const btn = document.getElementById('btn-offline-toggle');
+      const text = document.getElementById('text-offline-status');
+      const icon = document.getElementById('icon-wifi');
+      const banner = document.getElementById('offline-sync-banner');
+
+      if (isSimulatedOffline) {
+        btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-all bg-amber-950/80 border-amber-500 text-amber-300';
+        text.textContent = 'OFFLINE (EDGE)';
+        icon.setAttribute('data-lucide', 'wifi-off');
+        banner.classList.remove('hidden');
+        lucide.createIcons();
+      } else {
+        btn.className = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-all bg-emerald-950/70 border-emerald-700/60 text-emerald-300';
+        text.textContent = 'ONLINE';
+        icon.setAttribute('data-lucide', 'wifi');
+        syncOfflineQueue();
+        lucide.createIcons();
+      }
+    }
+
+    function syncOfflineQueueManual() {
+      syncOfflineQueue();
+    }
+
+    function syncOfflineQueue() {
+      if (offlineReportsQueue.length === 0) {
+        document.getElementById('offline-sync-banner').classList.add('hidden');
+        return;
+      }
+
+      const count = offlineReportsQueue.length;
+      offlineReportsQueue.forEach(inc => {
+        ACTIVE_INCIDENTS.unshift(inc);
+        addIncidentPinToMap(inc);
+      });
+      offlineReportsQueue = [];
+
+      document.getElementById('offline-pending-count').textContent = '0';
+      document.getElementById('badge-offline-queue').classList.add('hidden');
+      document.getElementById('offline-sync-banner').classList.add('hidden');
+
+      renderVerifiedIncidents();
+      playAlertPing('info');
+      alert(`Synchronized ${count} pending incident report(s) from local IndexedDB cache to central server!`);
+    }
+
+    // =========================================================================
+    // GEODATA: 8 NER STATES, HIGHWAYS, AND HAZARD ZONES
+    // =========================================================================
+    
+    // NER Hub Coordinates
+    const HUBS = {
+      Guwahati: [26.1445, 91.7362],
+      Shillong: [25.5788, 91.8933],
+      Jowai: [25.4500, 92.2000],
+      Sonapur: [25.1050, 92.5120],
+      Badarpur: [24.9000, 92.6000],
+      Silchar: [24.8170, 92.7926],
+      Agartala: [23.8315, 91.2868],
+      Aizawl: [23.7271, 92.7176],
+      Dimapur: [25.9068, 93.7266],
+      Kohima: [25.6701, 94.1086],
+      Imphal: [24.8170, 93.9368],
+      Jorhat: [26.7509, 94.2037],
+      Dibrugarh: [27.4728, 94.9120],
+      Itanagar: [27.0844, 93.6053],
+      Gangtok: [27.3314, 88.6138],
+      Siliguri: [26.7200, 88.4300],
+      Haflong: [25.1764, 93.0169],
+      Lumding: [25.7500, 93.1700],
+      Doboka: [26.0100, 92.8800]
+    };
+
+    // Highway Vector Routes
+    const CORRIDORS = {
+      'NH-6': {
+        name: 'NH-6 (Guwahati - Shillong - Sonapur - Silchar)',
+        points: [
+          HUBS.Guwahati,
+          [25.9500, 91.8200], // Nongpoh
+          HUBS.Shillong,
+          HUBS.Jowai,
+          [25.3200, 92.3800], // Khliehriat
+          HUBS.Sonapur,       // Sonapur Tunnel (Landslide chokepoint)
+          HUBS.Badarpur,
+          HUBS.Silchar
+        ],
+        status: 'HIGH_RISK',
+        risk: 78.4,
+        color: '#F43F5E',
+        poly: null
+      },
+      'NH-27': {
+        name: 'NH-27 (Guwahati - Doboka - Haflong Bypass - Silchar)',
+        points: [
+          HUBS.Guwahati,
+          [26.1800, 92.3500], // Jagiroad
+          HUBS.Doboka,
+          HUBS.Lumding,
+          HUBS.Haflong,
+          [24.9800, 92.8900], // Jatinga Valley
+          HUBS.Silchar
+        ],
+        status: 'NORMAL',
+        risk: 38.2,
+        color: '#10B981',
+        poly: null
+      },
+      'NH-37': {
+        name: 'NH-37 (Guwahati - Nagaon - Kaziranga - Jorhat - Dibrugarh)',
+        points: [
+          HUBS.Guwahati,
+          [26.3450, 92.6840], // Nagaon
+          [26.5800, 93.1700], // Kaziranga Corridor
+          HUBS.Jorhat,
+          HUBS.Dibrugarh
+        ],
+        status: 'NORMAL',
+        risk: 24.5,
+        color: '#10B981',
+        poly: null
+      },
+      'NH-8': {
+        name: 'NH-8 (Silchar - Karimganj - Dharmanagar - Agartala)',
+        points: [
+          HUBS.Silchar,
+          [24.8600, 92.3500], // Karimganj
+          [24.3800, 92.1600], // Dharmanagar
+          [24.0100, 91.6000], // Ambassa
+          HUBS.Agartala
+        ],
+        status: 'NORMAL',
+        risk: 31.0,
+        color: '#10B981',
+        poly: null
+      },
+      'NH-306': {
+        name: 'NH-306 (Silchar - Vairengte - Kolasib - Aizawl)',
+        points: [
+          HUBS.Silchar,
+          [24.3100, 92.7500], // Vairengte
+          [24.0100, 92.6700], // Kolasib
+          HUBS.Aizawl
+        ],
+        status: 'MODERATE',
+        risk: 52.0,
+        color: '#F59E0B',
+        poly: null
+      },
+      'NH-2': {
+        name: 'NH-2 (Dimapur - Kohima - Senapati - Imphal)',
+        points: [
+          HUBS.Dimapur,
+          [25.7500, 93.9500], // Zubza Sinking Zone
+          HUBS.Kohima,
+          [25.5000, 94.1300], // Mao Gate
+          [25.2600, 94.0100], // Senapati
+          HUBS.Imphal
+        ],
+        status: 'HIGH_RISK',
+        risk: 71.5,
+        color: '#F43F5E',
+        poly: null
+      },
+      'NH-10': {
+        name: 'NH-10 (Siliguri - Sevoke - Teesta - Gangtok)',
+        points: [
+          HUBS.Siliguri,
+          [26.8900, 88.4600], // Sevoke Coronation Bridge
+          [27.0500, 88.4900], // Teesta Bazaar
+          [27.1800, 88.5200], // Singtam
+          HUBS.Gangtok
+        ],
+        status: 'HIGH_RISK',
+        risk: 84.0,
+        color: '#F43F5E',
+        poly: null
+      },
+      'NH-415': {
+        name: 'NH-415 (Guwahati/Nagaon - Banderdewa - Itanagar)',
+        points: [
+          [26.3450, 92.6840],
+          [26.9800, 93.8500],
+          HUBS.Itanagar
+        ],
+        status: 'NORMAL',
+        risk: 28.0,
+        color: '#10B981',
+        poly: null
+      }
+    };
+
+    // Landslide Hazard Zones (GSI Dataset)
+    const LANDSLIDE_ZONES = [
+      {
+        name: "Sonapur Tunnel Chokepoint (NH-6)",
+        center: [25.1050, 92.5120],
+        radius: 12000,
+        severity: "CRITICAL",
+        details: "Steep shale slope (36.5°), prone to sudden mass debris detachment during rain > 120mm."
+      },
+      {
+        name: "Dima Hasao Ghat Corridor (Haflong)",
+        center: [25.1764, 93.0169],
+        radius: 14000,
+        severity: "HIGH",
+        details: "Mudflow and track subsidence zone during heavy hill runoffs."
+      },
+      {
+        name: "Paglajhora & Teesta Bazaar (NH-10)",
+        center: [26.9500, 88.4800],
+        radius: 15000,
+        severity: "CRITICAL",
+        details: "Continuous active creeping landslide complex along Teesta River gorge."
+      },
+      {
+        name: "Zubza Sinking Zone (NH-2 Nagaland)",
+        center: [25.7500, 93.9500],
+        radius: 10000,
+        severity: "HIGH",
+        details: "High water table leading to roadbed soil liquefaction."
+      }
+    ];
+
+    // Flood Inundation Polygons (Brahmaputra & Barak Basins)
+    const FLOOD_ZONES = [
+      {
+        name: "Kaziranga & Central Brahmaputra Floodplain",
+        bounds: [
+          [26.50, 92.90],
+          [26.75, 93.50]
+        ],
+        waterLevel: "0.8m above danger mark"
+      },
+      {
+        name: "Barak River Basin (Silchar-Lakhipur Lowlands)",
+        bounds: [
+          [24.70, 92.65],
+          [24.95, 93.00]
+        ],
+        waterLevel: "Submerged bypass feeder routes"
+      }
+    ];
+
+    // Live Simulated Logistics Fleet
+    let FLEET = [
+      {
+        id: 'NER-LOG-101',
+        name: 'Assam Petroleum Tanker',
+        type: 'TANKER',
+        cargo: 'High-Octane Fuel & LPG',
+        priority: 'CRITICAL',
+        driver: 'Pranab Bordoloi (+91 98640 12345)',
+        routeKey: 'NH-6',
+        segmentIdx: 3,
+        progress: 0.45,
+        speed: 38,
+        heading: 142,
+        status: 'HIGH_RISK_CORRIDOR',
+        marker: null,
+        trail: null
+      },
+      {
+        id: 'NER-MED-204',
+        name: 'Emergency Medical Cold-Chain',
+        type: 'COLD_CHAIN',
+        cargo: 'Insulin & Neonatal Vaccines',
+        priority: 'EMERGENCY_MEDICAL',
+        driver: 'Darishisha Marwein (+91 94361 54321)',
+        routeKey: 'NH-27',
+        segmentIdx: 2,
+        progress: 0.65,
+        speed: 48,
+        heading: 165,
+        status: 'SAFE_ROUTE',
+        marker: null,
+        trail: null
+      },
+      {
+        id: 'NER-FCI-308',
+        name: 'Food Corporation of India Grain Convoy',
+        type: 'HEAVY_TRUCK',
+        cargo: 'Essential Rice & Wheat Grains',
+        priority: 'STANDARD',
+        driver: 'Subrata Debnath (+91 98622 77889)',
+        routeKey: 'NH-8',
+        segmentIdx: 1,
+        progress: 0.30,
+        speed: 52,
+        heading: 205,
+        status: 'EN_ROUTE',
+        marker: null,
+        trail: null
+      },
+      {
+        id: 'NER-DIS-412',
+        name: 'NDRF Disaster Rescue Material',
+        type: 'DISASTER_RESCUE',
+        cargo: 'Bailey Bridge Modular Spans',
+        priority: 'DISASTER_RELIEF',
+        driver: 'Thoiba Singh (+91 97740 66554)',
+        routeKey: 'NH-2',
+        segmentIdx: 1,
+        progress: 0.20,
+        speed: 24,
+        heading: 180,
+        status: 'CAUTION',
+        marker: null,
+        trail: null
+      },
+      {
+        id: 'NER-PER-505',
+        name: 'Sikkim Organic Freight',
+        type: 'PERISHABLE',
+        cargo: 'Fresh Farm Produce & Milk',
+        priority: 'PERISHABLE',
+        driver: 'Dorjee Bhutia (+91 96478 33221)',
+        routeKey: 'NH-10',
+        segmentIdx: 1,
+        progress: 0.50,
+        speed: 26,
+        heading: 35,
+        status: 'HIGH_RISK_CORRIDOR',
+        marker: null,
+        trail: null
+      }
+    ];
+
+    // Active Ground Incidents
+    let ACTIVE_INCIDENTS = [
+      {
+        id: 'inc-01',
+        highway: 'NH-6',
+        type: 'LANDSLIDE',
+        severity: 'CRITICAL',
+        landmark: 'Sonapur Tunnel East Portal (km 141.2)',
+        lat: 25.1050,
+        lng: 92.5120,
+        description: 'Major slope collapse of 12,000 cu.m rock debris. Road completely impassable for heavy commercial convoys.',
+        reporter: 'Officer J. Sangma (Meghalaya SDMA)',
+        time: '18 mins ago'
+      },
+      {
+        id: 'inc-02',
+        highway: 'NH-10',
+        type: 'ROCKFALL',
+        severity: 'HIGH',
+        landmark: 'Teesta Bazaar (29th Mile)',
+        lat: 27.0500,
+        lng: 88.4900,
+        description: 'Single-lane movement only due to loose boulder detachment from high slope.',
+        reporter: 'BRO Task Force Swastik',
+        time: '42 mins ago'
+      }
+    ];
+
+    // Real-Time Alert Broadcasts
+    let ALERTS = [
+      {
+        id: 'alt-01',
+        level: 'CRITICAL',
+        type: 'CORRIDOR_BLOCKED',
+        title: 'Sonapur Tunnel (NH-6) High Landslide Alert',
+        message: 'Precipitation breached 185mm in East Jaintia Hills. NH-6 blocked. South Assam, Tripura & Mizoram supply routes affected.',
+        time: 'Just now'
+      },
+      {
+        id: 'alt-02',
+        level: 'WARNING',
+        type: 'WEATHER_SURGE',
+        title: 'IMD Red Warning: Brahmaputra Flood Spillover',
+        message: 'Water levels near Kaziranga NH-37 approaching highway pavement. 20 km/h speed limit strictly enforced.',
+        time: '25m ago'
+      },
+      {
+        id: 'alt-03',
+        level: 'INFO',
+        type: 'REROUTE_SUCCESS',
+        title: 'Medical Convoy Diverted to Safe Bypass',
+        message: 'Unit NER-MED-204 successfully rerouted onto NH-27 Doboka - Haflong bypass corridor.',
+        time: '1h ago'
+      }
+    ];
+
+    // =========================================================================
+    // MAP INITIALIZATION (Leaflet.js + Google Maps Tile Engine)
+    // =========================================================================
+    let map;
+    let layers = {
+      highways: L.layerGroup(),
+      landslides: L.layerGroup(),
+      floods: L.layerGroup(),
+      fleet: L.layerGroup(),
+      incidents: L.layerGroup()
+    };
+
+    // Google Maps & Alternate Basemap Tile Providers
+    const BASEMAPS = {
+      googleHybrid: L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+      }),
+      googleTerrain: L.tileLayer('https://mt{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps Terrain</a>'
+      }),
+      googleRoads: L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps</a>'
+      }),
+      googleTraffic: L.tileLayer('https://mt{s}.google.com/vt/lyrs=m,traffic&x={x}&y={y}&z={z}', {
+        subdomains: ['0', '1', '2', '3'],
+        maxZoom: 20,
+        attribution: '&copy; <a href="https://maps.google.com" target="_blank">Google Maps Traffic</a>'
+      }),
+      cartoDark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CARTO &copy; OpenStreetMap contributors',
+        subdomains: 'abcd',
+        maxZoom: 19
+      }),
+      osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19
+      })
+    };
+    let currentBaseLayer = BASEMAPS.googleHybrid;
+
+    function switchBaseMap(type) {
+      if (!BASEMAPS[type]) return;
+      if (currentBaseLayer && map.hasLayer(currentBaseLayer)) {
+        map.removeLayer(currentBaseLayer);
+      }
+      currentBaseLayer = BASEMAPS[type];
+      currentBaseLayer.addTo(map);
+      currentBaseLayer.bringToBack();
+
+      const selector = document.getElementById('basemap-selector');
+      if (selector && selector.value !== type) {
+        selector.value = type;
+      }
+    }
+
+    function initMap() {
+      // Center on North East India
+      map = L.map('map', {
+        center: [25.75, 92.50],
+        zoom: 7,
+        minZoom: 6,
+        maxZoom: 18,
+        zoomControl: false
+      });
+
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+      // Add default Google Maps Hybrid base layer
+      currentBaseLayer.addTo(map);
+
+      // Add all vector overlays
+      Object.values(layers).forEach(lg => lg.addTo(map));
+
+      // Draw Corridors
+      renderCorridors();
+
+      // Draw Landslide and Flood Hazard Zones
+      renderHazardZones();
+
+      // Draw Field Incidents
+      renderIncidentsOnMap();
+
+      // Initialize Live Fleet
+      initFleetOnMap();
+
+      // Hub City Markers
+      renderCityHubs();
+    }
+
+    function renderCityHubs() {
+      Object.entries(HUBS).forEach(([city, coords]) => {
+        const marker = L.circleMarker(coords, {
+          radius: 5,
+          color: '#06B6D4',
+          fillColor: '#0B1120',
+          fillOpacity: 1,
+          weight: 2
+        }).addTo(map);
+
+        marker.bindTooltip(`<b>${city}</b>`, {
+          permanent: false,
+          direction: 'top',
+          className: 'bg-tactical-900 text-cyan-300 border border-tactical-700 text-xs px-2 py-1 rounded shadow'
+        });
+      });
+    }
+
+    function renderCorridors() {
+      layers.highways.clearLayers();
+      Object.entries(CORRIDORS).forEach(([code, data]) => {
+        const poly = L.polyline(data.points, {
+          color: data.color,
+          weight: data.status === 'HIGH_RISK' ? 5 : 4,
+          opacity: 0.85,
+          dashArray: data.status === 'HIGH_RISK' ? '8, 6' : null
+        });
+
+        poly.bindPopup(`
+          <div class="p-1 space-y-1.5 text-xs">
+            <div class="font-bold text-sm text-white flex justify-between items-center">
+              <span>${code}</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono ${data.status === 'HIGH_RISK' ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}">
+                ${data.status} (${data.risk}%)
+              </span>
+            </div>
+            <div class="text-slate-300">${data.name}</div>
+            <div class="text-[11px] text-slate-400">Terrain: Hilly Ghat & Escarpment</div>
+          </div>
+        `);
+
+        data.poly = poly;
+        layers.highways.addLayer(poly);
+      });
+    }
+
+    function renderHazardZones() {
+      layers.landslides.clearLayers();
+      LANDSLIDE_ZONES.forEach(z => {
+        const circle = L.circle(z.center, {
+          radius: z.radius,
+          color: '#F43F5E',
+          fillColor: '#F43F5E',
+          fillOpacity: 0.18,
+          weight: 1.5,
+          className: 'pulse-danger'
+        });
+
+        circle.bindPopup(`
+          <div class="p-1 text-xs space-y-1">
+            <div class="font-bold text-rose-400 text-xs uppercase flex items-center gap-1">
+              <span>⚠️ GSI Landslide Zone</span>
+            </div>
+            <div class="font-semibold text-white">${z.name}</div>
+            <p class="text-[11px] text-slate-300">${z.details}</p>
+          </div>
+        `);
+
+        layers.landslides.addLayer(circle);
+      });
+
+      layers.floods.clearLayers();
+      FLOOD_ZONES.forEach(f => {
+        const rect = L.rectangle(f.bounds, {
+          color: '#06B6D4',
+          fillColor: '#06B6D4',
+          fillOpacity: 0.15,
+          weight: 1.5
+        });
+
+        rect.bindPopup(`
+          <div class="p-1 text-xs space-y-1">
+            <div class="font-bold text-cyan-400 text-xs uppercase">🌊 Flood Inundation Area</div>
+            <div class="font-semibold text-white">${f.name}</div>
+            <div class="text-[11px] text-slate-300">Water Status: ${f.waterLevel}</div>
+          </div>
+        `);
+
+        layers.floods.addLayer(rect);
+      });
+    }
+
+    function renderIncidentsOnMap() {
+      layers.incidents.clearLayers();
+      ACTIVE_INCIDENTS.forEach(inc => {
+        addIncidentPinToMap(inc);
+      });
+    }
+
+    function addIncidentPinToMap(inc) {
+      const icon = L.divIcon({
+        html: `
+          <div class="relative flex items-center justify-center">
+            <div class="w-7 h-7 rounded-full bg-rose-600/40 animate-ping absolute"></div>
+            <div class="w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center border-2 border-white shadow-lg text-xs font-bold">
+              !
+            </div>
+          </div>
+        `,
+        className: 'incident-marker-icon',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+
+      const marker = L.marker([inc.lat, inc.lng], { icon });
+      marker.bindPopup(`
+        <div class="p-1.5 space-y-1.5 text-xs">
+          <div class="flex justify-between items-center">
+            <span class="font-bold text-rose-400">${inc.type}</span>
+            <span class="px-1.5 py-0.2 rounded text-[10px] bg-rose-950 text-rose-400 border border-rose-800 font-bold">${inc.severity}</span>
+          </div>
+          <div class="text-white font-semibold">${inc.landmark} (${inc.highway})</div>
+          <p class="text-[11px] text-slate-300">${inc.description}</p>
+          <div class="text-[10px] text-slate-400 font-mono">Reported by: ${inc.reporter}</div>
+          <a href="https://www.google.com/maps/search/?api=1&query=${inc.lat},${inc.lng}" target="_blank" class="mt-2 block w-full text-center py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-semibold flex items-center justify-center gap-1">
+            <i data-lucide="external-link" class="w-3 h-3"></i> View in Google Maps / Satellite
+          </a>
+        </div>
+      `);
+
+      layers.incidents.addLayer(marker);
+    }
+
+    function toggleMapLayer(layerName, isChecked) {
+      if (!layers[layerName]) return;
+      if (isChecked) {
+        map.addLayer(layers[layerName]);
+      } else {
+        map.removeLayer(layers[layerName]);
+      }
+    }
+
+    function flyToRegion(region) {
+      if (region === 'ner') map.flyTo([25.75, 92.50], 7);
+      if (region === 'sonapur') map.flyTo(HUBS.Sonapur, 11);
+      if (region === 'haflong') map.flyTo(HUBS.Haflong, 10);
+      if (region === 'sikkim') map.flyTo([27.0500, 88.4900], 11);
+    }
+
+    // =========================================================================
+    // FLEET SIMULATION ENGINE (Smooth waypoint interpolation & live updates)
+    // =========================================================================
+    let simSpeed = 1;
+
+    function setSimSpeed(speed) {
+      simSpeed = speed;
+      document.getElementById('speed-label').textContent = `${speed}x (${speed === 1 ? 'Real-time' : 'Accelerated'})`;
+    }
+
+    function initFleetOnMap() {
+      layers.fleet.clearLayers();
+      FLEET.forEach(vehicle => {
+        const corridor = CORRIDORS[vehicle.routeKey];
+        if (!corridor) return;
+
+        const startPt = corridor.points[0];
+        const icon = L.divIcon({
+          html: `
+            <div class="relative flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2" id="vehicle-icon-${vehicle.id}">
+              <div class="w-6 h-6 rounded-lg ${vehicle.priority === 'EMERGENCY_MEDICAL' ? 'bg-cyan-500' : 'bg-emerald-600'} text-white flex items-center justify-center shadow-lg border border-white/80">
+                <span class="text-[10px] font-bold">🚛</span>
+              </div>
+            </div>
+          `,
+          className: 'fleet-marker-icon',
+          iconSize: [24, 24]
+        });
+
+        const marker = L.marker(startPt, { icon }).addTo(layers.fleet);
+
+        marker.bindPopup(`
+          <div class="p-2 space-y-1.5 text-xs min-w-[200px]">
+            <div class="flex justify-between items-center">
+              <span class="font-bold text-white">${vehicle.id}</span>
+              <span class="text-[9px] font-mono px-1 py-0.5 rounded bg-tactical-800 text-cyan-400 border border-tactical-700">${vehicle.priority}</span>
+            </div>
+            <div class="text-cyan-300 font-semibold">${vehicle.name}</div>
+            <div class="text-[11px] text-slate-300">Cargo: ${vehicle.cargo}</div>
+            <div class="grid grid-cols-2 gap-1 text-[10px] font-mono bg-tactical-900 p-1 rounded border border-tactical-800 my-1">
+              <div>Speed: <strong class="text-emerald-400">${vehicle.speed} km/h</strong></div>
+              <div>Route: <strong>${vehicle.routeKey}</strong></div>
+            </div>
+            <div class="text-[10px] text-slate-400 font-mono">Driver: ${vehicle.driver}</div>
+            <div class="pt-1.5 mt-1.5 border-t border-tactical-800 flex gap-1">
+              <a href="https://www.google.com/maps/search/?api=1&query=${startPt[0]},${startPt[1]}" target="_blank" class="flex-1 text-center py-1 bg-blue-600 hover:bg-blue-500 text-white rounded text-[10px] font-semibold flex items-center justify-center gap-1">
+                <i data-lucide="map-pin" class="w-3 h-3"></i> Google Maps
+              </a>
+              <button onclick="map.flyTo([${startPt[0]}, ${startPt[1]}], 12); switchBaseMap('googleHybrid');" class="px-2 py-1 bg-tactical-800 hover:bg-tactical-700 text-emerald-400 rounded text-[10px] font-semibold flex items-center justify-center gap-1">
+                <i data-lucide="satellite" class="w-3 h-3"></i> 3D Satellite
+              </button>
+            </div>
+          </div>
+        `);
+
+        vehicle.marker = marker;
+      });
+
+      renderFleetList();
+      startFleetSimulationLoop();
+    }
+
+    function startFleetSimulationLoop() {
+      setInterval(() => {
+        FLEET.forEach(vehicle => {
+          const corridor = CORRIDORS[vehicle.routeKey];
+          if (!corridor || !corridor.points || corridor.points.length < 2) return;
+
+          vehicle.progress += 0.003 * simSpeed;
+          if (vehicle.progress >= 1.0) {
+            vehicle.progress = 0.0;
+            vehicle.segmentIdx = (vehicle.segmentIdx + 1) % (corridor.points.length - 1);
+          }
+
+          const p1 = corridor.points[vehicle.segmentIdx];
+          const p2 = corridor.points[vehicle.segmentIdx + 1] || corridor.points[0];
+
+          const lat = p1[0] + (p2[0] - p1[0]) * vehicle.progress;
+          const lng = p1[1] + (p2[1] - p1[1]) * vehicle.progress;
+
+          if (vehicle.marker) {
+            vehicle.marker.setLatLng([lat, lng]);
+          }
+        });
+      }, 100);
+    }
+
+    function renderFleetList() {
+      const container = document.getElementById('fleet-list-container');
+      if (!container) return;
+
+      container.innerHTML = FLEET.map(v => `
+        <div class="bg-tactical-850 border border-tactical-700 rounded-xl p-3 hover:border-tactical-600 transition-all">
+          <div class="flex justify-between items-start mb-1.5">
+            <div class="flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full ${v.priority === 'CRITICAL' ? 'bg-rose-500 animate-ping' : 'bg-emerald-400'}"></span>
+              <span class="font-bold text-white text-xs">${v.id}</span>
+            </div>
+            <span class="text-[9px] font-mono px-1.5 py-0.5 rounded bg-tactical-900 border border-tactical-700 text-cyan-400">
+              ${v.routeKey}
+            </span>
+          </div>
+          <div class="text-xs font-semibold text-slate-300">${v.name}</div>
+          <div class="text-[11px] text-slate-400 mb-2">📦 ${v.cargo}</div>
+          <div class="flex justify-between items-center text-[10px] font-mono text-slate-400 pt-2 border-t border-tactical-800">
+            <span>Speed: <strong class="text-white">${v.speed} km/h</strong></span>
+            <div class="flex items-center gap-2">
+              <a href="https://www.google.com/maps/dir/?api=1&origin=${HUBS.Guwahati[0]},${HUBS.Guwahati[1]}&destination=${CORRIDORS[v.routeKey] ? CORRIDORS[v.routeKey].points[CORRIDORS[v.routeKey].points.length-1][0] + ',' + CORRIDORS[v.routeKey].points[CORRIDORS[v.routeKey].points.length-1][1] : '24.8170,92.7926'}" target="_blank" class="text-blue-400 hover:text-blue-300 font-semibold flex items-center gap-1">
+                <i data-lucide="map-pin" class="w-3 h-3"></i> Google Maps
+              </a>
+              <button onclick="focusVehicleOnMap('${v.id}')" class="text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1">
+                <i data-lucide="crosshair" class="w-3 h-3"></i> Locate
+              </button>
+            </div>
+          </div>
+        </div>
+      `).join('');
+      lucide.createIcons();
+    }
+
+    function focusVehicleOnMap(vehicleId) {
+      const vehicle = FLEET.find(v => v.id === vehicleId);
+      if (vehicle && vehicle.marker) {
+        map.flyTo(vehicle.marker.getLatLng(), 11);
+        vehicle.marker.openPopup();
+      }
+    }
+
+    // =========================================================================
+    // AI ROUTE RISK ENGINE & DYNAMIC SAFE REROUTING
+    // =========================================================================
+    function updateWeatherSimulation(val) {
+      const labels = [
+        "Clear Sky / Minimal Rain (15mm)",
+        "Light Monsoon Showers (65mm)",
+        "Heavy Monsoon Downpour (185mm)",
+        "Severe Cloudburst Alert (>240mm)"
+      ];
+      document.getElementById('weather-intensity-val').textContent = labels[val - 1];
+    }
+
+    function calculateRouteRisk() {
+      const weatherVal = parseInt(document.getElementById('weather-slider').value);
+      const isSevere = weatherVal >= 3;
+
+      const primaryRisk = isSevere ? 78.4 : 34.0;
+      const primaryDelay = isSevere ? "+5.3 hrs" : "+45 mins";
+
+      document.getElementById('primary-risk-badge').textContent = isSevere ? `HIGH RISK ${primaryRisk}%` : `LOW RISK ${primaryRisk}%`;
+      document.getElementById('primary-risk-badge').className = `px-2 py-0.5 rounded text-[11px] font-mono font-bold ${isSevere ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-emerald-950 text-emerald-400 border border-emerald-800'}`;
+      document.getElementById('primary-delay').textContent = primaryDelay;
+
+      // Update SHAP Bars
+      const rainWeight = (weatherVal * 12.5).toFixed(1);
+      document.getElementById('shap-bars-container').innerHTML = `
+        <div>
+          <div class="flex justify-between text-slate-400">
+            <span>48h Rainfall & Saturation (${weatherVal * 60}mm)</span>
+            <span class="text-cyan-400 font-bold">+${rainWeight}%</span>
+          </div>
+          <div class="w-full bg-tactical-950 h-1.5 rounded-full overflow-hidden mt-0.5">
+            <div class="bg-cyan-500 h-full rounded-full" style="width: ${rainWeight}%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between text-slate-400">
+            <span>Steep Ghat Slope (>30° Escarpment)</span>
+            <span class="text-amber-400 font-bold">+26.2%</span>
+          </div>
+          <div class="w-full bg-tactical-950 h-1.5 rounded-full overflow-hidden mt-0.5">
+            <div class="bg-amber-500 h-full rounded-full" style="width: 26.2%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between text-slate-400">
+            <span>GSI Landslide Recurrence</span>
+            <span class="text-rose-400 font-bold">+21.0%</span>
+          </div>
+          <div class="w-full bg-tactical-950 h-1.5 rounded-full overflow-hidden mt-0.5">
+            <div class="bg-rose-500 h-full rounded-full" style="width: 21.0%"></div>
+          </div>
+        </div>
+        <div>
+          <div class="flex justify-between text-slate-400">
+            <span>River Proximity & Soil Liquefaction</span>
+            <span class="text-indigo-400 font-bold">+10.5%</span>
+          </div>
+          <div class="w-full bg-tactical-950 h-1.5 rounded-full overflow-hidden mt-0.5">
+            <div class="bg-indigo-500 h-full rounded-full" style="width: 10.5%"></div>
+          </div>
+        </div>
+      `;
+
+      // Update Google Maps Navigation Links based on selected origin & destination
+      const origin = document.getElementById('route-origin').value;
+      const destination = document.getElementById('route-destination').value;
+      const gmapsPrimary = document.getElementById('gmaps-primary-link');
+      if (gmapsPrimary) {
+        gmapsPrimary.href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin + ', North East India')}&destination=${encodeURIComponent(destination + ', North East India')}&travelmode=driving`;
+      }
+      const gmapsAlt = document.getElementById('gmaps-nav-link');
+      if (gmapsAlt) {
+        gmapsAlt.href = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin + ', North East India')}&destination=${encodeURIComponent(destination + ', North East India')}&waypoints=Lumding,Assam%7CHaflong,Assam&travelmode=driving`;
+      }
+
+      playAlertPing('info');
+    }
+
+    function rerouteLiveFleetToAlternate() {
+      // Divert NER-LOG-101 and NER-MED-204 from NH-6 to NH-27
+      const truck = FLEET.find(v => v.id === 'NER-LOG-101');
+      if (truck) {
+        truck.routeKey = 'NH-27';
+        truck.segmentIdx = 0;
+        truck.progress = 0.2;
+        truck.status = 'REROUTED_TO_SAFE_BYPASS';
+      }
+
+      playAlertPing('critical');
+      broadcastNewAlert({
+        level: 'INFO',
+        title: 'Emergency Dynamic Reroute Executed',
+        message: 'Tanker Convoy NER-LOG-101 redirected to NH-27 Doboka - Haflong bypass. Avoids Sonapur bottleneck.'
+      });
+
+      renderFleetList();
+      alert('SUCCESS: Dynamic Safe Reroute executed! Logistics convoy diverted onto NH-27 bypass corridor.');
+    }
+
+    // =========================================================================
+    // FIELD INCIDENT REPORTING (OFFLINE PWA QUEUE HANDLER)
+    // =========================================================================
+    function handleIncidentSubmit(e) {
+      e.preventDefault();
+
+      const newInc = {
+        id: `inc-${Date.now()}`,
+        highway: document.getElementById('inc-highway').value,
+        type: document.getElementById('inc-type').value,
+        severity: document.getElementById('inc-severity').value,
+        landmark: document.getElementById('inc-landmark').value,
+        lat: parseFloat(document.getElementById('inc-lat').value),
+        lng: parseFloat(document.getElementById('inc-lng').value),
+        description: document.getElementById('inc-desc').value,
+        reporter: 'Field Officer (On-Site)',
+        time: 'Just now'
+      };
+
+      if (isSimulatedOffline) {
+        // Queue in offline storage
+        offlineReportsQueue.push(newInc);
+        const count = offlineReportsQueue.length;
+        document.getElementById('offline-pending-count').textContent = count;
+        document.getElementById('badge-offline-queue').textContent = count;
+        document.getElementById('badge-offline-queue').classList.remove('hidden');
+        document.getElementById('offline-sync-banner').classList.remove('hidden');
+
+        alert(`OFFLINE MODE: No cellular connection detected. Report saved to device IndexedDB! [Queue: ${count} pending sync]`);
+        return;
+      }
+
+      // Online submission
+      ACTIVE_INCIDENTS.unshift(newInc);
+      addIncidentPinToMap(newInc);
+      renderVerifiedIncidents();
+
+      // If critical, trigger road blockage
+      if (newInc.severity === 'CRITICAL') {
+        const corridor = CORRIDORS[newInc.highway];
+        if (corridor) {
+          corridor.status = 'BLOCKED';
+          corridor.color = '#F43F5E';
+          if (corridor.poly) {
+            corridor.poly.setStyle({ color: '#F43F5E', dashArray: '6, 6', weight: 6 });
+          }
+        }
+
+        broadcastNewAlert({
+          level: 'CRITICAL',
+          title: `NEW FIELD BLOCKAGE: ${newInc.type} on ${newInc.highway}`,
+          message: `${newInc.landmark}: ${newInc.description}`
+        });
+
+        playAlertPing('critical');
+      }
+
+      map.flyTo([newInc.lat, newInc.lng], 11);
+      alert('Field Incident Broadcasted to Central Command Hub!');
+    }
+
+    function renderVerifiedIncidents() {
+      const container = document.getElementById('verified-incidents-list');
+      if (!container) return;
+
+      container.innerHTML = ACTIVE_INCIDENTS.map(inc => `
+        <div class="bg-tactical-900 border border-tactical-800 rounded-lg p-2 text-xs">
+          <div class="flex justify-between items-center mb-1">
+            <span class="font-bold text-rose-400">${inc.type}</span>
+            <span class="text-[9px] font-mono text-slate-500">${inc.time}</span>
+          </div>
+          <div class="text-white font-medium">${inc.landmark} (${inc.highway})</div>
+          <div class="text-[10px] text-slate-400 truncate">${inc.description}</div>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================================
+    // HACKATHON DEMO SIMULATOR ("GOD MODE")
+    // =========================================================================
+    function triggerSimScenario(scenario) {
+      if (scenario === 'sonapur_landslide') {
+        CORRIDORS['NH-6'].status = 'BLOCKED';
+        CORRIDORS['NH-6'].risk = 94.5;
+        CORRIDORS['NH-6'].color = '#F43F5E';
+        if (CORRIDORS['NH-6'].poly) {
+          CORRIDORS['NH-6'].poly.setStyle({ color: '#F43F5E', dashArray: '4, 4', weight: 7 });
+        }
+
+        // Add incident pin
+        const slideInc = {
+          id: `sim-slide-${Date.now()}`,
+          highway: 'NH-6',
+          type: 'LANDSLIDE',
+          severity: 'CRITICAL',
+          landmark: 'Sonapur Tunnel Portal (NH-6)',
+          lat: 25.1050,
+          lng: 92.5120,
+          description: 'Catastrophic debris avalanche. 14,000 cu.m rock mass. Road severed indefinitely.',
+          reporter: 'Jury Demo God-Mode',
+          time: 'Just now'
+        };
+        ACTIVE_INCIDENTS.unshift(slideInc);
+        addIncidentPinToMap(slideInc);
+        renderVerifiedIncidents();
+
+        // Reroute fleet automatically
+        FLEET.forEach(v => {
+          if (v.routeKey === 'NH-6') {
+            v.routeKey = 'NH-27';
+            v.segmentIdx = 0;
+            v.status = 'AUTO_REROUTED';
+          }
+        });
+        renderFleetList();
+
+        broadcastNewAlert({
+          level: 'CRITICAL',
+          title: '🚨 CATASTROPHIC LANDSLIDE AT SONAPUR TUNNEL (NH-6)',
+          message: 'NH-6 completely impassable. 3 states isolated. Automated contingency rerouting diverted all convoys to NH-27 Haflong corridor.'
+        });
+
+        playAlertPing('critical');
+        map.flyTo(HUBS.Sonapur, 10);
+      }
+
+      else if (scenario === 'kaziranga_flood') {
+        CORRIDORS['NH-37'].status = 'HIGH_RISK';
+        CORRIDORS['NH-37'].risk = 74.0;
+        if (CORRIDORS['NH-37'].poly) {
+          CORRIDORS['NH-37'].poly.setStyle({ color: '#06B6D4', dashArray: '8, 4' });
+        }
+
+        broadcastNewAlert({
+          level: 'WARNING',
+          title: '🌊 BRAHMAPUTRA RIVER WATERLOGGING ON NH-37',
+          message: 'Overtopping at Kaziranga corridor. Heavy vehicles limited to 20 km/h convoy movement.'
+        });
+
+        playAlertPing('critical');
+        map.flyTo([26.5800, 93.1700], 9);
+      }
+
+      else if (scenario === 'extreme_monsoon') {
+        document.getElementById('weather-slider').value = 4;
+        updateWeatherSimulation(4);
+        calculateRouteRisk();
+
+        broadcastNewAlert({
+          level: 'WARNING',
+          title: '🌧️ REGIONAL CLOUDBURST SPIKE: 240MM RAINFALL',
+          message: 'IMD Red Alert across Meghalaya plateau & Barak Valley. High landslide probability index active.'
+        });
+        playAlertPing('info');
+      }
+
+      else if (scenario === 'clear_all') {
+        // Reset all corridors
+        CORRIDORS['NH-6'].status = 'NORMAL';
+        CORRIDORS['NH-6'].risk = 28.5;
+        CORRIDORS['NH-6'].color = '#10B981';
+        if (CORRIDORS['NH-6'].poly) {
+          CORRIDORS['NH-6'].poly.setStyle({ color: '#10B981', dashArray: null, weight: 4 });
+        }
+
+        CORRIDORS['NH-37'].status = 'NORMAL';
+        CORRIDORS['NH-37'].risk = 24.5;
+        CORRIDORS['NH-37'].color = '#10B981';
+        if (CORRIDORS['NH-37'].poly) {
+          CORRIDORS['NH-37'].poly.setStyle({ color: '#10B981', dashArray: null, weight: 4 });
+        }
+
+        ACTIVE_INCIDENTS = [];
+        renderIncidentsOnMap();
+        renderVerifiedIncidents();
+
+        broadcastNewAlert({
+          level: 'INFO',
+          title: 'ROADWAYS CLEARED BY BRO & SDMA',
+          message: 'Debris cleared from NH-6 and NH-37. Normal logistics traffic flow restored across all 8 states.'
+        });
+
+        playAlertPing('info');
+        map.flyTo([25.75, 92.50], 7);
+      }
+    }
+
+    // =========================================================================
+    // ALERTS & NOTIFICATIONS
+    // =========================================================================
+    function broadcastNewAlert(alertData) {
+      const fullAlert = {
+        id: `alt-${Date.now()}`,
+        time: 'Just now',
+        ...alertData
+      };
+      ALERTS.unshift(fullAlert);
+
+      // Update bottom banner
+      document.getElementById('alert-banner-type').textContent = fullAlert.level;
+      document.getElementById('alert-banner-type').className = `text-[10px] font-mono px-1.5 py-0.2 rounded uppercase font-bold ${fullAlert.level === 'CRITICAL' ? 'bg-rose-950 text-rose-400 border border-rose-800' : 'bg-cyan-950 text-cyan-400 border border-cyan-800'}`;
+      document.getElementById('alert-banner-text').textContent = fullAlert.message;
+      document.getElementById('btn-label-all-alerts').textContent = `All Alerts (${ALERTS.length})`;
+
+      renderAllAlertsModal();
+    }
+
+    function renderAllAlertsModal() {
+      const container = document.getElementById('all-alerts-container');
+      if (!container) return;
+
+      container.innerHTML = ALERTS.map(a => `
+        <div class="bg-tactical-850 border ${a.level === 'CRITICAL' ? 'border-rose-900/80 bg-rose-950/20' : 'border-tactical-700'} rounded-xl p-3">
+          <div class="flex justify-between items-start mb-1">
+            <span class="text-xs font-bold ${a.level === 'CRITICAL' ? 'text-rose-400' : 'text-cyan-400'}">${a.title}</span>
+            <span class="text-[10px] font-mono text-slate-500">${a.time}</span>
+          </div>
+          <p class="text-[11px] text-slate-300">${a.message}</p>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================================
+    // STATE ACCESSIBILITY INDEX DATA
+    // =========================================================================
+    const NER_STATES_INDEX = [
+      { state: "Assam", index: 82, vulnerable: "Dima Hasao & Barak Valley", status: "STABLE" },
+      { state: "Meghalaya", index: 68, vulnerable: "East Jaintia Hills (NH-6)", status: "HIGH RISK" },
+      { state: "Tripura", index: 54, vulnerable: "NH-8 Lifeline Corridor", status: "COMPROMISED" },
+      { state: "Mizoram", index: 51, vulnerable: "NH-306 Kolasib Ghat", status: "COMPROMISED" },
+      { state: "Manipur", index: 62, vulnerable: "NH-2 Zubza/Mao Corridor", status: "CAUTION" },
+      { state: "Nagaland", index: 70, vulnerable: "Kohima Sinking Zone", status: "CAUTION" },
+      { state: "Arunachal", index: 74, vulnerable: "Trans-Arunachal Ghats", status: "STABLE" },
+      { state: "Sikkim", index: 48, vulnerable: "NH-10 Teesta Corridor", status: "CRITICAL" }
+    ];
+
+    function renderStateCards() {
+      const grid = document.getElementById('state-cards-grid');
+      if (!grid) return;
+
+      grid.innerHTML = NER_STATES_INDEX.map(s => `
+        <div class="bg-tactical-850 p-3 rounded-xl border border-tactical-700">
+          <div class="text-[10px] font-mono text-slate-400 uppercase">${s.state}</div>
+          <div class="text-lg font-bold ${s.index < 60 ? 'text-rose-400' : 'text-emerald-400'}">${s.index}%</div>
+          <div class="text-[10px] text-slate-400 truncate mt-1">Hotspot: ${s.vulnerable}</div>
+        </div>
+      `).join('');
+    }
+
+    // =========================================================================
+    // UI NAVIGATION TABS & MODALS
+    // =========================================================================
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('text-cyan-400', 'bg-tactical-800/80', 'font-semibold');
+      });
+
+      const target = document.getElementById(tabId);
+      if (target) target.classList.remove('hidden');
+
+      const btn = document.getElementById(`btn-${tabId}`);
+      if (btn) btn.classList.add('text-cyan-400', 'bg-tactical-800/80', 'font-semibold');
+    }
+
+    function switchRole(role) {
+      if (role === 'field_officer') {
+        switchTab('tab-field');
+      } else if (role === 'dispatcher') {
+        switchTab('tab-fleet');
+      } else if (role === 'authority') {
+        openModal('modal-analytics');
+      }
+    }
+
+    function openModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.remove('hidden');
+    }
+
+    function closeModal(id) {
+      const modal = document.getElementById(id);
+      if (modal) modal.classList.add('hidden');
+    }
+
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      renderVerifiedIncidents();
+      renderAllAlertsModal();
+      renderStateCards();
+      lucide.createIcons();
+
+      // Register Service Worker for PWA
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('./sw.js').then(reg => {
+          console.log('[PWA] Service Worker registered:', reg.scope);
+        }).catch(err => {
+          console.log('[PWA] Service Worker registration note:', err);
+        });
+      }
+    });
+  </script>
+</body>
+</html>
